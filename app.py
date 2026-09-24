@@ -12,14 +12,14 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 def index():
     return render_template("index.html")
 
+# Hamesha outer quotes Double (" ") rakhein:
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     user_message = data.get("message", "")
     
     if not user_message:
-        return jsonify({"reply": "I did not receive any message."}), 400
-
+        return jsonify({"reply": "I did not receive any message."}), 
     if not OPENROUTER_API_KEY:
         return jsonify({"reply": "API Key is missing on server configuration."}), 500
 
