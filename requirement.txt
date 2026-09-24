@@ -1,0 +1,5 @@
+flet
+openai
+python-dotenv
+edge-tts
+pygame
