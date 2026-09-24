@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Web Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #050b14;
+            color: #00f0ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .arc-reactor {
+            box-shadow: 0 0 50px #00f0ff, inset 0 0 30px #00f0ff;
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 30px #00f0ff; }
+            50% { transform: scale(1.08); box-shadow: 0 0 70px #00f0ff, 0 0 100px #0088ff; }
+            100% { transform: scale(1); box-shadow: 0 0 30px #00f0ff; }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen p-6">
+
+    <!-- Header -->
+    <header class="text-center mt-4">
+        <h1 class="text-4xl font-extrabold tracking-widest text-cyan-400 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]">
+            JARVIS AI
+        </h1>
+        <p id="status-text" class="text-gray-400 mt-2 text-sm">Status: Standby | Click Mic or Say "Hey Jarvis"</p>
+    </header>
+
+    <!-- Main Arc Reactor Voice Button -->
+    <main class="flex flex-col items-center justify-center my-auto">
+        <button id="mic-btn" onclick="toggleListening()" 
+            class="arc-reactor w-44 h-44 rounded-full border-4 border-cyan-400 flex items-center justify-center transition-all duration-300 bg-cyan-950/30 hover:bg-cyan-900/50">
+            <svg id="mic-icon" class="w-16 h-16 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"/>
+            </svg>
+        </button>
+        
+        <!-- Output Log Display -->
+        <div class="mt-8 max-w-lg w-full bg-slate-900/80 border border-cyan-500/30 rounded-lg p-4 text-center min-h-[100px]">
+            <p id="user-said" class="text-gray-400 italic text-sm mb-2">Say something...</p>
+            <p id="jarvis-reply" class="text-cyan-300 font-medium text-lg"></p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-gray-500 text-xs mb-2">
+        Powered by Web Speech API & OpenRouter AI
+    </footer>
+
+    <script>
+        const statusText = document.getElementById('status-text');
+        const userSaid = document.getElementById('user-said');
+        const jarvisReply = document.getElementById('jarvis-reply');
+        const micBtn = document.getElementById('mic-btn');
+
+        // Web Speech Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-IN';
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('pulse-animation');
+                statusText.innerText = "Listening...";
+                statusText.classList.replace("text-gray-400", "text-cyan-400");
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('pulse-animation');
+                statusText.innerText = "Status: Standby";
+                statusText.classList.replace("text-cyan-400", "text-gray-400");
+            };
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                userSaid.innerText = `You said: "${transcript}"`;
+                processCommand(transcript);
+            };
+        } else {
+            alert("Web Speech API is not supported in this browser. Please use Google Chrome or MS Edge.");
+        }
+
+        function toggleListening() {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        // Voice Output (Text to Speech)
+        function speak(text) {
+            jarvisReply.innerText = text;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Command Processing
+        async function processCommand(command) {
+            // Web Commands
+            if (command.includes("open youtube")) {
+                speak("Opening YouTube Boss!");
+                window.open("https://www.youtube.com", "_blank");
+            } else if (command.includes("open google")) {
+                speak("Opening Google...");
+                window.open("https://www.google.com", "_blank");
+            } else if (command.includes("play")) {
+                const song = command.replace("play", "").trim();
+                speak(`Searching ${song} on YouTube...`);
+                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`, "_blank");
+            } else {
+                // Send to OpenRouter AI via backend
+                statusText.innerText = "Jarvis is thinking...";
+                try {
+                    const res = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: command })
+                    });
+                    const data = await res.json();
+                    speak(data.reply || "I am unable to respond right now.");
+                } catch (err) {
+                    speak("Sorry Boss, I lost connection to the server.");
+                }
+                statusText.innerText = "Listening...";
+            }
+        }
+    </script>
+</body>
+</html>
