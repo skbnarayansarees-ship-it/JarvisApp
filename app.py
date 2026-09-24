@@ -18,7 +18,7 @@ def chat():
     user_message = data.get("message", "")
     
     if not user_message:
-        return jsonify({"reply": "I didn't receive any message."}), 400
+        return jsonify({"reply": "I did not receive any message."}), 400
 
     if not OPENROUTER_API_KEY:
         return jsonify({"reply": "API Key is missing on server configuration."}), 500
@@ -42,11 +42,11 @@ def chat():
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=12)
         if response.status_code == 200:
-            ai_reply = response.json()['choices'][0]['message']['content']
+            ai_reply = response.json()["choices"][0]["message"]["content"]
             return jsonify({"reply": ai_reply})
         else:
             return jsonify({"reply": "Error connecting to AI service."}), 500
-    except Exception as e:
+    except Exception:
         return jsonify({"reply": "Server request timed out."}), 500
 
 if __name__ == "__main__":
