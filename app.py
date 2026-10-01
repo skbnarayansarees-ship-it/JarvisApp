@@ -31,9 +31,9 @@ def chat():
         "X-Title": "Jarvis Web App"
     }
     
-    # Updated to an active, super-fast free model
+    # Auto Free Router: OpenRouter automatically routes to any active free model
     payload = {
-        "model": "google/gemini-2.0-flash-lite-preview-02-05:free",
+        "model": "openrouter/free",
         "messages": [
             {
                 "role": "system", 
