@@ -31,8 +31,9 @@ def chat():
         "X-Title": "Jarvis Web App"
     }
     
+    # Updated to an active, super-fast free model
     payload = {
-        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "model": "google/gemini-2.0-flash-lite-preview-02-05:free",
         "messages": [
             {
                 "role": "system", 
@@ -50,7 +51,6 @@ def chat():
             ai_reply = res_json['choices'][0]['message']['content']
             return jsonify({"reply": ai_reply})
         else:
-            # Shows exact OpenRouter error message on screen
             error_details = res_json.get('error', {}).get('message', f"HTTP {response.status_code}")
             return jsonify({"reply": f"AI Error: {error_details}"}), 200
 
