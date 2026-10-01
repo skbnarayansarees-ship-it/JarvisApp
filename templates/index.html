@@ -34,7 +34,7 @@
         <p id="status-text" class="text-gray-400 mt-2 text-sm">Status: Standby | Tap Mic to Speak</p>
     </header>
 
-    <!-- Main Arc Reactor Voice Button -->
+    <!-- Arc Reactor Voice Button -->
     <main class="flex flex-col items-center justify-center my-auto">
         <button id="mic-btn" onclick="toggleListening()" 
             class="arc-reactor w-44 h-44 rounded-full border-4 border-cyan-400 flex items-center justify-center transition-all duration-300 bg-cyan-950/30 hover:bg-cyan-900/50">
@@ -111,28 +111,60 @@
         }
 
         async function processCommand(command) {
-            const lower = command.toLowerCase();
-            if (lower.includes("open youtube")) {
-                speak("Opening YouTube Boss!");
-                window.open("https://www.youtube.com", "_blank");
-            } else if (lower.includes("open google")) {
-                speak("Opening Google...");
-                window.open("https://www.google.com", "_blank");
-            } else {
-                statusText.innerText = "Jarvis is thinking...";
-                try {
-                    const res = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: command })
-                    });
-                    const data = await res.json();
-                    speak(data.reply || "I am unable to respond right now.");
-                } catch (err) {
-                    speak("Sorry Boss, error connecting to server.");
+            const lower = command.toLowerCase().trim();
+
+            // 1. Play Songs on YouTube
+            if (lower.startsWith("play ")) {
+                let songName = lower.replace("play ", "").replace("on youtube", "").trim();
+                if (songName) {
+                    speak(`Playing ${songName} on YouTube Boss!`);
+                    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(songName)}`;
+                    window.open(searchUrl, '_blank');
+                    statusText.innerText = "Status: Standby";
+                    return;
+                }
+            }
+
+            // 2. Open Web Apps & Websites
+            if (lower.startsWith("open ")) {
+                let appName = lower.replace("open ", "").trim();
+
+                const webApps = {
+                    "youtube": "https://www.youtube.com",
+                    "google": "https://www.google.com",
+                    "whatsapp": "https://web.whatsapp.com",
+                    "gmail": "https://mail.google.com",
+                    "instagram": "https://www.instagram.com",
+                    "spotify": "https://open.spotify.com",
+                    "github": "https://github.com",
+                    "facebook": "https://www.facebook.com"
+                };
+
+                if (webApps[appName]) {
+                    speak(`Opening ${appName}...`);
+                    window.open(webApps[appName], '_blank');
+                } else {
+                    speak(`Searching and opening ${appName}...`);
+                    window.open(`https://www.google.com/search?q=${encodeURIComponent(appName)}`, '_blank');
                 }
                 statusText.innerText = "Status: Standby";
+                return;
             }
+
+            // 3. General AI Queries via OpenRouter
+            statusText.innerText = "Jarvis is thinking...";
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: command })
+                });
+                const data = await res.json();
+                speak(data.reply || "I am unable to respond right now.");
+            } catch (err) {
+                speak("Sorry Boss, error connecting to server.");
+            }
+            statusText.innerText = "Status: Standby";
         }
     </script>
 </body>
