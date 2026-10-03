@@ -1,182 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link
-    rel="icon"
-    type="image/png"
-    href="{{ url_for('static', filename='logo.png') }}?v=3"
->
-
-<link
-    rel="shortcut icon"
-    type="image/png"
-    href="{{ url_for('static', filename='logo.png') }}?v=3"
->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JARVIS AI - Web Assistant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>J.A.R.V.I.S AI</title>
+    <!-- Custom Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <style>
         body {
-            background-color: #050b14;
-            color: #00f0ff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0d1117;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            padding-bottom: 60px;
         }
-        .arc-reactor {
-            box-shadow: 0 0 50px #00f0ff, inset 0 0 30px #00f0ff;
+        .container {
+            margin: 40px auto;
+            max-width: 850px;
+            background: #161b22;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .pulse-animation {
-            animation: pulse 2s infinite;
+        .hidden {
+            display: none;
         }
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 30px #00f0ff; }
-            50% { transform: scale(1.08); box-shadow: 0 0 70px #00f0ff, 0 0 100px #0088ff; }
-            100% { transform: scale(1); box-shadow: 0 0 30px #00f0ff; }
+        h1, h2 {
+            color: #58a6ff;
+            margin-bottom: 5px;
+        }
+        p {
+            color: #8b949e;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #238636;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            margin: 8px;
+            width: 200px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #2ea043;
+        }
+        
+        /* Chemistry features & details layout */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+            text-align: left;
+        }
+        .feature-card {
+            background: #21262d;
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+        }
+        .feature-card h3 {
+            color: #e6edf3;
+            font-size: 17px;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        
+        /* Developed by Aryan Footer */
+        .aryan-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #0d1117;
+            padding: 8px 0;
+            font-size: 11px;
+            color: #8b949e;
+            text-align: center;
+            letter-spacing: 1.5px;
+            border-top: 1px solid #21262d;
+            z-index: 1000;
+        }
+        
+        #status-text {
+            font-weight: bold;
+            font-size: 16px;
+            margin: 15px 0;
+            color: #d2a8ff;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-between min-h-screen p-6">
+<body>
 
-    <!-- Header -->
-    <header class="text-center mt-4">
-        <h1 class="text-4xl font-extrabold tracking-widest text-cyan-400 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]">
-            JARVIS AI
-        </h1>
-        <p id="status-text" class="text-gray-400 mt-2 text-sm">Status: Standby | Tap Mic to Speak</p>
-    </header>
+    <!-- 1. Language Selection Screen -->
+    <div id="language-screen" class="container">
+        <h2>Welcome to JARVIS</h2>
+        <p>Select your conversation language</p>
+        <button class="btn" onclick="startJarvis('English')">1 — English</button><br>
+        <button class="btn" onclick="startJarvis('Hinglish')">2 — Hinglish</button>
+    </div>
 
-    <!-- Arc Reactor Voice Button -->
-    <main class="flex flex-col items-center justify-center my-auto">
-        <button id="mic-btn" onclick="toggleListening()" 
-            class="arc-reactor w-44 h-44 rounded-full border-4 border-cyan-400 flex items-center justify-center transition-all duration-300 bg-cyan-950/30 hover:bg-cyan-900/50">
-            <svg id="mic-icon" class="w-16 h-16 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"/>
-            </svg>
-        </button>
+    <!-- 2. Main JARVIS Interface (Purani details & features ke sath) -->
+    <div id="main-interface" class="container hidden">
+        <h1>J.A.R.V.I.S. System</h1>
+        <p id="status-text">Listening for wake word "Jarvis"...</p>
         
-        <!-- Output Log Display -->
-        <div class="mt-8 max-w-lg w-full bg-slate-900/80 border border-cyan-500/30 rounded-lg p-4 text-center min-h-[100px]">
-            <p id="user-said" class="text-gray-400 italic text-sm mb-2">Say something...</p>
-            <p id="jarvis-reply" class="text-cyan-300 font-medium text-lg"></p>
-        </div>
-    </main>
+        <button class="btn" id="test-speak" style="background-color: #1f6feb; width: 240px;">Test Voice Interruption</button>
 
-    <!-- Footer -->
-    <footer class="text-gray-500 text-xs mb-2">
-        Powered by Web Speech API & OpenRouter AI
-    </footer>
+        <!-- Purane Chemistry Educational Suite Features -->
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>🧪 Periodic Table</h3>
+                <p>Interactive table with element details, mass, and valency for students.</p>
+                <button class="btn" style="width: 100%; margin: 0; padding: 8px;" onclick="openModule('Periodic Table')">Open Table</button>
+            </div>
+            <div class="feature-card">
+                <h3>🎮 Element Synthesis</h3>
+                <p>Game mode to combine basic elements and synthesize new compounds.</p>
+                <button class="btn" style="width: 100%; margin: 0; padding: 8px;" onclick="openModule('Synthesis Game')">Play Game</button>
+            </div>
+            <div class="feature-card">
+                <h3>🧠 Memory Tricks</h3>
+                <p>Hinglish-based mnemonic generator to memorize element sequences easily.</p>
+                <button class="btn" style="width: 100%; margin: 0; padding: 8px;" onclick="openModule('Mnemonics')">View Mnemonics</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Developed by Aryan Footer -->
+    <div class="aryan-footer">
+        Developed by Aryan
+    </div>
 
     <script>
-        const statusText = document.getElementById('status-text');
-        const userSaid = document.getElementById('user-said');
-        const jarvisReply = document.getElementById('jarvis-reply');
-        const micBtn = document.getElementById('mic-btn');
+        let selectedLanguage = 'en-US';
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        let isListening = false;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-IN';
-
-            recognition.onstart = () => {
-                isListening = true;
-                micBtn.classList.add('pulse-animation');
-                statusText.innerText = "Listening...";
-            };
-
-            recognition.onend = () => {
-                isListening = false;
-                micBtn.classList.remove('pulse-animation');
-                statusText.innerText = "Status: Standby";
-            };
-
-            recognition.onresult = async (event) => {
-                const transcript = event.results[0][0].transcript.trim();
-                userSaid.innerText = `You said: "${transcript}"`;
-                processCommand(transcript);
-            };
-        } else {
-            alert("Web Speech API is not supported in this browser. Please use Chrome or Edge.");
-        }
-
-        function toggleListening() {
-            if (!recognition) return;
-            if (isListening) {
-                recognition.stop();
+        function startJarvis(lang) {
+            document.getElementById('language-screen').classList.add('hidden');
+            document.getElementById('main-interface').classList.remove('hidden');
+            
+            if (lang === 'Hinglish') {
+                selectedLanguage = 'hi-IN';
             } else {
-                recognition.start();
+                selectedLanguage = 'en-US';
             }
+            
+            initSpeechRecognition();
         }
 
-        function speak(text) {
-            jarvisReply.innerText = text;
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            window.speechSynthesis.speak(utterance);
+        function openModule(moduleName) {
+            alert("Opening " + moduleName + " module...");
         }
 
-        async function processCommand(command) {
-            const lower = command.toLowerCase().trim();
+        // Speech Recognition & Interruption Logic Setup
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true; 
+                recognition.interimResults = true;
+                recognition.lang = selectedLanguage;
 
-            // 1. Play Songs on YouTube
-            if (lower.startsWith("play ")) {
-                let songName = lower.replace("play ", "").replace("on youtube", "").trim();
-                if (songName) {
-                    speak(`Playing ${songName} on YouTube Boss!`);
-                    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(songName)}`;
-                    window.open(searchUrl, '_blank');
-                    statusText.innerText = "Status: Standby";
-                    return;
-                }
-            }
+                recognition.onresult = function(event) {
+                    let currentTranscript = "";
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        currentTranscript += event.results[i][0].transcript;
+                    }
 
-            // 2. Open Web Apps & Websites
-            if (lower.startsWith("open ")) {
-                let appName = lower.replace("open ", "").trim();
+                    let spokenText = currentTranscript.toLowerCase();
 
-                const webApps = {
-                    "youtube": "https://www.youtube.com",
-                    "google": "https://www.google.com",
-                    "whatsapp": "https://web.whatsapp.com",
-                    "gmail": "https://mail.google.com",
-                    "instagram": "https://www.instagram.com",
-                    "spotify": "https://open.spotify.com",
-                    "github": "https://github.com",
-                    "facebook": "https://www.facebook.com"
+                    // Agar user ne beech mein "Jarvis" bola, toh AI turant chup ho jayega
+                    if (spokenText.includes("jarvis")) {
+                        console.log("Wake word 'Jarvis' detected! Interrupting speech...");
+                        
+                        // Yahan AI ka bolna turant ruk jata hai
+                        window.speechSynthesis.cancel();
+                        
+                        document.getElementById("status-text").innerText = "Jarvis stopped! Listening to your command...";
+                    }
                 };
 
-                if (webApps[appName]) {
-                    speak(`Opening ${appName}...`);
-                    window.open(webApps[appName], '_blank');
-                } else {
-                    speak(`Searching and opening ${appName}...`);
-                    window.open(`https://www.google.com/search?q=${encodeURIComponent(appName)}`, '_blank');
-                }
-                statusText.innerText = "Status: Standby";
-                return;
-            }
+                recognition.onerror = function(event) {
+                    console.error("Mic error:", event.error);
+                };
 
-            // 3. General AI Queries via OpenRouter
-            statusText.innerText = "Jarvis is thinking...";
-            try {
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: command })
-                });
-                const data = await res.json();
-                speak(data.reply || "I am unable to respond right now.");
-            } catch (err) {
-                speak("Sorry Boss, error connecting to server.");
+                recognition.onend = function() {
+                    recognition.start(); // Continuous listening active rakhega
+                };
+
+                recognition.start();
+            } else {
+                alert("Browser does not support Speech Recognition. Please use Google Chrome.");
             }
-            statusText.innerText = "Status: Standby";
         }
+
+        // Test button jisse AI lamba bolega aur "Jarvis" bolne par turant chup ho jayega
+        document.getElementById("test-speak").addEventListener("click", () => {
+            document.getElementById("status-text").innerText = "Jarvis is speaking... Say 'Jarvis' to stop!";
+            
+            let speechText = selectedLanguage === 'hi-IN'
+                ? "Namaste Aryan sir. Main ek lamba sentence bol raha hoon. Agar aap beech mein mera naam lenge toh main turant chup ho jaunga."
+                : "Hello Aryan sir. I am speaking a very long sentence right now. If you say my name in the middle, I will immediately stop talking.";
+                
+            let utterance = new SpeechSynthesisUtterance(speechText);
+            utterance.lang = selectedLanguage;
+            window.speechSynthesis.speak(utterance);
+        });
     </script>
 </body>
 </html>
