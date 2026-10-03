@@ -1,4 +1,5 @@
-flask
+Flask
 requests
-python-dotenv
+edge-tts
+yt-dlp
 gunicorn
