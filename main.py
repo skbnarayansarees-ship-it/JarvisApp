@@ -1,171 +1,737 @@
-Wake word add karne se Jarvis hamesha background me passive wait karega aur jab aap "Hey Jarvis" ya "Jarvis" bologe, tabhi active hokar aapki command sunega aur reply karega.
-
-Step 1: main.py me Wake Word Logic Add Karo
-Apne main.py code me ye naya listen_for_wake_word() function aur updated main execution loop replace kar do:
-
-Python
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    send_file,
+    after_this_request,
+)
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from urllib.parse import quote
+import asyncio
 import os
-import sys
-import time
-import webbrowser
+import tempfile
+import uuid
+
 import requests
-import pyttsx3
-import speech_recognition as sr
-import pywhatkit
-from dotenv import load_dotenv
+import edge_tts
+import yt_dlp
 
-load_dotenv()
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# ------------------- VOICE & TTS ENGINE -------------------
-engine = pyttsx3.init('sapi5')
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)
-engine.setProperty('rate', 175)
+# ============================================================
+# APP
+# ============================================================
 
-def speak(text):
-    print(f"Jarvis: {text}")
-    engine.say(text)
-    engine.runAndWait()
+app = Flask(__name__)
 
-def wish_me():
-    hour = int(time.strftime("%H"))
-    if 0 <= hour < 12:
-        speak("Good Morning Boss!")
-    elif 12 <= hour < 18:
-        speak("Good Afternoon Boss!")
-    else:
-        speak("Good Evening Boss!")
-    speak("Jarvis is online. Say 'Hey Jarvis' to wake me up.")
+PORT = int(os.environ.get("PORT", "5000"))
 
-# ------------------- WAKE WORD DETECTOR -------------------
-def listen_for_wake_word():
-    """Background me chup-chaap sunega aur 'Jarvis' detect karega"""
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("\n[Standby Mode: Waiting for 'Hey Jarvis'...]")
-        r.pause_threshold = 0.8
-        r.adjust_for_ambient_noise(source, duration=0.5)
-        
+BASE_DIR = Path(__file__).resolve().parent
+
+
+# ============================================================
+# OPENROUTER
+# ============================================================
+
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+OPENROUTER_MODEL = "deepseek/deepseek-chat"
+
+OPENROUTER_API_KEY = (
+    os.environ.get("OPENROUTER_API_KEY", "")
+    .strip()
+)
+
+
+# Local-only fallback.
+# Do NOT upload this file to GitHub.
+if not OPENROUTER_API_KEY:
+    local_key_file = BASE_DIR / "openrouter_key.txt"
+
+    if local_key_file.exists():
         try:
-            # Chote time limits taaki Fast check ho sake
-            audio = r.listen(source, timeout=3, phrase_time_limit=3)
-            query = r.recognize_google(audio, language='en-IN').lower()
-            
-            if "jarvis" in query or "hey jarvis" in query:
-                print("[Wake Word Detected!]")
-                return True
+            OPENROUTER_API_KEY = (
+                local_key_file.read_text(
+                    encoding="utf-8"
+                ).strip()
+            )
         except Exception:
-            return False
-    return False
+            OPENROUTER_API_KEY = ""
 
-# ------------------- COMMAND LISTENER -------------------
-def listen():
-    """Wake word ke baad main command sunne ke liye"""
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("[Active Mode: Listening for your command...]")
-        r.pause_threshold = 1
-        r.adjust_for_ambient_noise(source, duration=0.5)
-        
-        try:
-            audio = r.listen(source, timeout=5, phrase_time_limit=8)
-            query = r.recognize_google(audio, language='en-IN').lower()
-            print(f"You said: {query}\n")
-            return query
-        except Exception:
-            speak("I couldn't hear you clearly Boss.")
-            return ""
 
-# ------------------- OPENROUTER AI INTEGRATION -------------------
-def ask_ai(prompt):
-    if not OPENROUTER_API_KEY:
-        return "Boss, OpenRouter API key missing hai."
+# ============================================================
+# INDIA STANDARD TIME
+# ============================================================
 
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "meta-llama/llama-3.3-70b-instruct:free",
-        "messages": [
-            {
-                "role": "system", 
-                "content": "You are Jarvis, an intelligent voice AI. Answer concisely in 2-3 short sentences max."
-            },
-            {"role": "user", "content": prompt}
-        ]
-    }
+IST = timezone(
+    timedelta(
+        hours=5,
+        minutes=30
+    )
+)
+
+
+# ============================================================
+# TTS
+# ============================================================
+
+TTS_VOICE = "en-IN-PrabhatNeural"
+
+
+# ============================================================
+# SYSTEM PROMPTS
+# ============================================================
+
+ENGLISH_SYSTEM_PROMPT = """
+You are JARVIS, a helpful AI web assistant.
+
+The user selected English.
+
+Speak naturally and clearly.
+
+Do not use unnecessary markdown.
+Do not use tables unless absolutely necessary.
+Do not use emojis unless the user specifically asks for them.
+
+Keep answers useful and conversational.
+
+When the user asks for current/live information, do not pretend
+you have live web access unless the application actually provides
+that information.
+
+Never claim that you performed an action that you could not perform.
+"""
+
+HINGLISH_SYSTEM_PROMPT = """
+You are JARVIS, a friendly AI web assistant.
+
+The user selected Hinglish.
+
+Reply in natural everyday Indian Hinglish, like a normal person
+talking in Hindi mixed with English.
+
+Do NOT use formal textbook Hindi.
+Do NOT force Hindi translation for technical words.
+Use common words such as "haan", "theek hai", "batao",
+"abhi", "kar sakte ho", "problem aa rahi hai", etc.
+Keep the conversation natural.
+
+Do not use unnecessary markdown.
+Do not use emojis unless the user specifically asks for them.
+
+When the user asks for current/live information, do not pretend
+you have live web access unless the application actually provides
+that information.
+
+Never claim that you performed an action that you could not perform.
+"""
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+    return render_template("index.html")
+
+
+# ============================================================
+# HEALTH
+# ============================================================
+
+@app.route("/health")
+def health():
+    return jsonify(
+        {
+            "success": True,
+            "message": "Jarvis server is running"
+        }
+    )
+
+
+# ============================================================
+# IST
+# ============================================================
+
+@app.route("/ist")
+def ist_time():
+    now = datetime.now(IST)
+
+    return jsonify(
+        {
+            "success": True,
+            "iso": now.isoformat(),
+            "date": now.strftime("%d %B %Y"),
+            "time": now.strftime("%I:%M:%S %p"),
+            "timezone": "IST"
+        }
+    )
+
+
+# ============================================================
+# AI CHAT
+# ============================================================
+
+@app.route("/ask-ai", methods=["POST"])
+def ask_ai():
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        if response.status_code == 200:
-            result = response.json()
-            return result['choices'][0]['message']['content'].strip()
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        prompt = str(
+            data.get("prompt", "")
+        ).strip()
+
+        language = str(
+            data.get("language", "english")
+        ).lower().strip()
+
+
+        if not prompt:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Please enter a message."
+                }
+            ), 400
+
+
+        if not OPENROUTER_API_KEY:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        "OpenRouter API key is not configured."
+                    )
+                }
+            ), 500
+
+
+        if language == "hinglish":
+
+            system_prompt = (
+                HINGLISH_SYSTEM_PROMPT
+            )
+
         else:
-            return "Apologies Boss, server error occurred."
-    except Exception:
-        return "Network connection issue."
 
-# ------------------- MAIN COMMAND PROCESSOR -------------------
-def process_command(command):
-    if not command:
-        return True
+            system_prompt = (
+                ENGLISH_SYSTEM_PROMPT
+            )
 
-    # 1. GAANE & YOUTUBE
-    if "play" in command or "gaana" in command:
-        song_name = command.replace("play", "").replace("gaana", "").replace("bjao", "").replace("chalao", "").strip()
-        if song_name:
-            speak(f"Playing {song_name} on YouTube...")
-            pywhatkit.playonyt(song_name)
 
-    # 2. SYSTEM APPS
-    elif "open notepad" in command:
-        speak("Opening Notepad...")
-        os.system("notepad")
+        headers = {
 
-    elif "open calculator" in command:
-        speak("Opening Calculator...")
-        os.system("calc")
+            "Authorization":
+                f"Bearer {OPENROUTER_API_KEY}",
 
-    elif "open chrome" in command:
-        speak("Opening Google Chrome...")
-        os.system("start chrome")
+            "Content-Type":
+                "application/json",
 
-    # 3. WEBSITES
-    elif "open youtube" in command:
-        speak("Opening YouTube...")
-        webbrowser.open("https://www.youtube.com")
+            "HTTP-Referer":
+                request.host_url.rstrip("/"),
 
-    elif "open google" in command:
-        speak("Opening Google...")
-        webbrowser.open("https://www.google.com")
+            "X-Title":
+                "JARVIS AI Assistant",
+        }
 
-    # 4. EXIT COMMANDS
-    elif any(word in command for word in ["exit", "quit", "stop", "bye", "band ho jao"]):
-        speak("Goodbye Boss!")
-        return False
 
-    # 5. GENERAL QUESTIONS -> AI
-    else:
-        speak("Thinking...")
-        ai_reply = ask_ai(command)
-        speak(ai_reply)
+        payload = {
 
-    return True
+            "model":
+                OPENROUTER_MODEL,
 
-# ------------------- EXECUTION LOOP -------------------
+            "messages": [
+
+                {
+                    "role":
+                        "system",
+
+                    "content":
+                        system_prompt,
+                },
+
+                {
+                    "role":
+                        "user",
+
+                    "content":
+                        prompt,
+                },
+
+            ],
+
+            "temperature":
+                0.3,
+
+            "max_tokens":
+                4000,
+        }
+
+
+        response = requests.post(
+
+            OPENROUTER_URL,
+
+            headers=headers,
+
+            json=payload,
+
+            timeout=90,
+        )
+
+
+        if response.status_code != 200:
+
+            try:
+
+                error_data = (
+                    response.json()
+                )
+
+                error_message = (
+                    error_data.get(
+                        "error",
+                        {}
+                    ).get(
+                        "message"
+                    )
+                )
+
+            except Exception:
+
+                error_message = None
+
+
+            if not error_message:
+                error_message = response.text
+
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        (
+                            "OpenRouter error: "
+                            + str(error_message)
+                        )
+                }
+            ), 502
+
+
+        result = response.json()
+
+
+        choices = result.get(
+            "choices",
+            []
+        )
+
+
+        if not choices:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "OpenRouter returned no answer."
+                }
+            ), 502
+
+
+        answer = (
+            choices[0]
+            .get("message", {})
+            .get("content", "")
+        )
+
+
+        if not answer:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "OpenRouter returned an empty response."
+                }
+            ), 502
+
+
+        return jsonify(
+            {
+                "success": True,
+                "answer": answer.strip()
+            }
+        )
+
+
+    except requests.Timeout:
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "AI request timed out. Please try again."
+            }
+        ), 504
+
+
+    except Exception as exc:
+
+        print(
+            "ASK AI ERROR:",
+            repr(exc)
+        )
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "AI server error."
+            }
+        ), 500
+
+
+# ============================================================
+# TTS
+# ============================================================
+
+def generate_tts_file(
+    text: str,
+    output_path: str
+):
+    async def runner():
+
+        communicate = edge_tts.Communicate(
+
+            text,
+
+            TTS_VOICE,
+
+            rate="+0%",
+
+            volume="+0%",
+        )
+
+        await communicate.save(
+            output_path
+        )
+
+
+    asyncio.run(
+        runner()
+    )
+
+
+@app.route("/speak", methods=["POST"])
+def speak():
+
+    temp_path = None
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        text = str(
+            data.get("text", "")
+        ).strip()
+
+
+        if not text:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "No text provided."
+                }
+            ), 400
+
+
+        # Limit accidental huge requests.
+        text = text[:20000]
+
+
+        filename = (
+            f"jarvis_{uuid.uuid4().hex}.mp3"
+        )
+
+        temp_path = os.path.join(
+            tempfile.gettempdir(),
+            filename
+        )
+
+
+        generate_tts_file(
+            text,
+            temp_path
+        )
+
+
+        if not os.path.exists(
+            temp_path
+        ):
+
+            raise RuntimeError(
+                "TTS file was not created."
+            )
+
+
+        @after_this_request
+        def cleanup(response):
+
+            try:
+
+                if (
+                    temp_path
+                    and os.path.exists(temp_path)
+                ):
+
+                    os.remove(
+                        temp_path
+                    )
+
+            except Exception as cleanup_error:
+
+                print(
+                    "TTS CLEANUP ERROR:",
+                    repr(cleanup_error)
+                )
+
+            return response
+
+
+        return send_file(
+
+            temp_path,
+
+            mimetype="audio/mpeg",
+
+            as_attachment=False,
+
+            download_name="jarvis.mp3",
+
+            max_age=0,
+        )
+
+
+    except Exception as exc:
+
+        print(
+            "TTS ERROR:",
+            repr(exc)
+        )
+
+
+        try:
+
+            if (
+                temp_path
+                and os.path.exists(temp_path)
+            ):
+
+                os.remove(
+                    temp_path
+                )
+
+        except Exception:
+
+            pass
+
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "Voice generation failed."
+            }
+        ), 500
+
+
+# ============================================================
+# YOUTUBE SEARCH
+# ============================================================
+
+@app.route("/youtube", methods=["POST"])
+def youtube():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        query = str(
+            data.get("query", "")
+        ).strip()
+
+
+        if not query:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "No YouTube query provided."
+                }
+            ), 400
+
+
+        search_term = (
+            f"ytsearch1:{query}"
+        )
+
+
+        options = {
+
+            "quiet":
+                True,
+
+            "no_warnings":
+                True,
+
+            "skip_download":
+                True,
+
+            "extract_flat":
+                True,
+
+            "noplaylist":
+                True,
+
+        }
+
+
+        with yt_dlp.YoutubeDL(
+            options
+        ) as ydl:
+
+            info = ydl.extract_info(
+                search_term,
+                download=False
+            )
+
+
+        entries = info.get(
+            "entries",
+            []
+        )
+
+
+        if not entries:
+
+            search_url = (
+                "https://www.youtube.com/results?search_query="
+                + quote(query)
+            )
+
+            return jsonify(
+                {
+                    "success": True,
+                    "video_id": None,
+                    "title": query,
+                    "url": search_url,
+                }
+            )
+
+
+        entry = entries[0]
+
+
+        video_id = entry.get(
+            "id"
+        )
+
+
+        title = entry.get(
+            "title"
+        ) or query
+
+
+        if video_id:
+
+            video_url = (
+                "https://www.youtube.com/watch?v="
+                + str(video_id)
+            )
+
+            return jsonify(
+                {
+                    "success": True,
+                    "video_id":
+                        video_id,
+                    "title":
+                        title,
+                    "url":
+                        video_url,
+                }
+            )
+
+
+        search_url = (
+            "https://www.youtube.com/results?search_query="
+            + quote(query)
+        )
+
+
+        return jsonify(
+            {
+                "success": True,
+                "video_id": None,
+                "title": query,
+                "url": search_url,
+            }
+        )
+
+
+    except Exception as exc:
+
+        print(
+            "YOUTUBE ERROR:",
+            repr(exc)
+        )
+
+
+        search_url = (
+            "https://www.youtube.com/results?search_query="
+            + quote(
+                str(
+                    (request.get_json(silent=True) or {})
+                    .get("query", "music")
+                )
+            )
+        )
+
+
+        return jsonify(
+            {
+                "success": True,
+                "video_id": None,
+                "title": "YouTube search",
+                "url": search_url,
+            }
+        )
+
+
+# ============================================================
+# RUN
+# ============================================================
+
 if __name__ == "__main__":
-    wish_me()
-    running = True
-    
-    while running:
-        # Step 1: Standby Mode me wait karega
-        if listen_for_wake_word():
-            speak("Yes Boss?")
-            
-            # Step 2: Wake word milte hi main command sunega
-            user_input = listen()
-            if user_input:
-                running = process_command(user_input)
+
+    app.run(
+
+        host="0.0.0.0",
+
+        port=PORT,
+
+        debug=False,
+    )
