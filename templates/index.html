@@ -18,17 +18,10 @@
     <link
         rel="icon"
         type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=100"
-    >
-
-    <link
-        rel="shortcut icon"
-        type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=100"
+        href="{{ url_for('static', filename='logo.png') }}?v=999"
     >
 
     <title>JARVIS AI Assistant</title>
-
 
     <style>
 
@@ -72,10 +65,6 @@
             padding: 18px;
         }
 
-        /* =====================================================
-           TOP
-        ====================================================== */
-
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -96,13 +85,12 @@
             height: 58px;
 
             object-fit: cover;
-            object-position: center;
 
             border-radius: 12px;
+
             background: white;
 
             display: block;
-            flex-shrink: 0;
         }
 
         .brand {
@@ -127,12 +115,7 @@
             margin-top: 4px;
             font-size: 11px;
             font-weight: 700;
-            opacity: .75;
         }
-
-        /* =====================================================
-           LANGUAGE
-        ====================================================== */
 
         #languageScreen {
             flex: 1;
@@ -176,6 +159,7 @@
             width: 100%;
 
             margin-top: 12px;
+
             padding: 17px 20px;
 
             border: 0;
@@ -197,10 +181,6 @@
                 rgba(255,255,255,.19);
         }
 
-        /* =====================================================
-           CHAT
-        ====================================================== */
-
         #chatScreen {
             display: none;
 
@@ -213,12 +193,12 @@
 
         .chat-box {
             flex: 1;
-
             min-height: 0;
 
             overflow-y: auto;
 
-            padding: 5px 2px 20px;
+            padding:
+                5px 2px 20px;
         }
 
         .message-row {
@@ -249,7 +229,8 @@
         }
 
         .message.user {
-            background: #2667ff;
+            background:
+                #2667ff;
         }
 
         .message.jarvis {
@@ -265,10 +246,6 @@
             opacity: .60;
             font-style: italic;
         }
-
-        /* =====================================================
-           YOUTUBE
-        ====================================================== */
 
         .youtube-area {
             display: none;
@@ -293,10 +270,6 @@
 
             border: 0;
         }
-
-        /* =====================================================
-           ORB
-        ====================================================== */
 
         .orb-area {
             display: flex;
@@ -331,10 +304,6 @@
                 rgba(50,100,255,.40);
 
             cursor: pointer;
-
-            transition:
-                transform .15s,
-                box-shadow .15s;
         }
 
         .orb.listening {
@@ -362,10 +331,6 @@
             }
         }
 
-        /* =====================================================
-           INPUT
-        ====================================================== */
-
         .input-area {
             display: flex;
 
@@ -379,7 +344,8 @@
 
             min-width: 0;
 
-            padding: 16px 18px;
+            padding:
+                16px 18px;
 
             border-radius: 16px;
 
@@ -428,10 +394,6 @@
                 rgba(255,255,255,.18);
         }
 
-        /* =====================================================
-           FOOTER
-        ====================================================== */
-
         .footer {
             text-align: center;
 
@@ -451,10 +413,6 @@
 
             font-weight: 700;
         }
-
-        /* =====================================================
-           MOBILE
-        ====================================================== */
 
         @media (max-width: 650px) {
 
@@ -507,15 +465,12 @@
 <div class="app">
 
 
-    <!-- TOP -->
-
     <div class="topbar">
-
 
         <div class="brand-area">
 
             <img
-                src="{{ url_for('static', filename='logo.png') }}?v=100"
+                src="{{ url_for('static', filename='logo.png') }}?v=999"
                 alt="JARVIS"
                 class="top-logo"
             >
@@ -543,27 +498,20 @@
 
         </div>
 
-
     </div>
 
 
-    <!-- LANGUAGE -->
-
     <section id="languageScreen">
 
-
         <div class="language-card">
-
 
             <h1>
                 Welcome to JARVIS
             </h1>
 
-
             <p>
                 Select your conversation language
             </p>
-
 
             <button
                 class="lang-button"
@@ -572,7 +520,6 @@
                 1 — English
             </button>
 
-
             <button
                 class="lang-button"
                 onclick="selectLanguage('hinglish')"
@@ -580,14 +527,10 @@
                 2 — Hinglish
             </button>
 
-
         </div>
-
 
     </section>
 
-
-    <!-- CHAT -->
 
     <section id="chatScreen">
 
@@ -597,8 +540,6 @@
             id="chatBox"
         ></div>
 
-
-        <!-- YOUTUBE -->
 
         <div
             class="youtube-area"
@@ -618,30 +559,23 @@
         </div>
 
 
-        <!-- ORB -->
-
         <div class="orb-area">
 
             <div
                 class="orb"
                 id="orb"
-                onclick="micButtonClicked()"
-                title="Click to speak"
+                onclick="handleMicClick()"
             ></div>
 
         </div>
 
 
-        <!-- INPUT -->
-
         <div class="input-area">
-
 
             <button
                 class="mic-button"
                 id="micButton"
-                onclick="micButtonClicked()"
-                title="Microphone"
+                onclick="handleMicClick()"
             >
                 🎤
             </button>
@@ -659,11 +593,9 @@
             <button
                 class="send-button"
                 onclick="sendTypedMessage()"
-                title="Send"
             >
                 ➤
             </button>
-
 
         </div>
 
@@ -686,40 +618,40 @@
 
 <script>
 
+
 /* ============================================================
    STATE
-   ============================================================ */
+
+   VERY IMPORTANT:
+
+   There is NO always-running microphone.
+
+   One recognition object exists only during the
+   user's explicit microphone session.
+============================================================ */
 
 let selectedLanguage = null;
 
-let recognitionSupported = false;
+let recognition = null;
 
-/*
-    IMPORTANT:
-    There is NO permanent SpeechRecognition object.
+let recognitionSession = 0;
 
-    A recognition object exists ONLY while the user
-    has explicitly clicked the microphone.
-*/
-
-let activeRecognition = null;
-
-let activeRecognitionToken = 0;
-
-let microphoneOn = false;
+let microphoneActive = false;
 
 let ttsActive = false;
 
-let audioPlayer = null;
+let ttsAudio = null;
 
-let audioUrl = null;
+let ttsUrl = null;
 
-let ttsController = null;
+let ttsAbortController = null;
+
+let micBlocked = true;
 
 
 /* ============================================================
    ELEMENTS
-   ============================================================ */
+============================================================ */
 
 const languageScreen =
     document.getElementById(
@@ -779,44 +711,48 @@ const youtubePlayer =
 
 /* ============================================================
    MIC UI
-   ============================================================ */
+============================================================ */
 
-function setMicUI(on) {
+function showMicOff() {
 
-    microphoneOn = on;
+    microphoneActive =
+        false;
 
-    if (on) {
+    micStatus.textContent =
+        "MIC OFF";
 
-        micStatus.textContent =
-            "MIC ON";
+    micButton.textContent =
+        "🎤";
 
-        micButton.textContent =
-            "⏹️";
+    orb.classList.remove(
+        "listening"
+    );
+}
 
-        orb.classList.add(
-            "listening"
-        );
 
-    } else {
+function showMicOn() {
 
-        micStatus.textContent =
-            "MIC OFF";
+    microphoneActive =
+        true;
 
-        micButton.textContent =
-            "🎤";
+    micStatus.textContent =
+        "MIC ON";
 
-        orb.classList.remove(
-            "listening"
-        );
-    }
+    micButton.textContent =
+        "⏹️";
+
+    orb.classList.add(
+        "listening"
+    );
 }
 
 
 /* ============================================================
    IST
-   ============================================================ */
+============================================================ */
 
-const IST_OFFSET = 19800000;
+const IST_OFFSET =
+    19800000;
 
 
 function getISTParts() {
@@ -857,10 +793,7 @@ function getISTParts() {
 function pad(value) {
 
     return String(value)
-        .padStart(
-            2,
-            "0"
-        );
+        .padStart(2, "0");
 }
 
 
@@ -904,7 +837,7 @@ setInterval(
 
 /* ============================================================
    LANGUAGE
-   ============================================================ */
+============================================================ */
 
 function selectLanguage(
     language
@@ -924,37 +857,27 @@ function selectLanguage(
             ? "Hinglish selected"
             : "English selected";
 
-    setMicUI(false);
+    showMicOff();
 
-    if (
+    micBlocked =
+        false;
+
+    addMessage(
+        "jarvis",
         language === "hinglish"
-    ) {
-
-        addMessage(
-            "jarvis",
+            ?
             "Haan bilkul. Main naturally Hinglish mein baat karunga. Batao kya poochna hai."
-        );
-
-    } else {
-
-        addMessage(
-            "jarvis",
+            :
             "Hello. I'm JARVIS. How can I help you?"
-        );
-    }
-
-    /*
-        IMPORTANT:
-        We DO NOT create SpeechRecognition here.
-    */
+    );
 
     userInput.focus();
 }
 
 
 /* ============================================================
-   MESSAGE
-   ============================================================ */
+   MESSAGES
+============================================================ */
 
 function addMessage(
     type,
@@ -997,13 +920,12 @@ function addThinking() {
 
     addMessage(
         "jarvis",
-
         selectedLanguage ===
             "hinglish"
-
-            ? "Soch raha hoon..."
-
-            : "Thinking..."
+            ?
+            "Soch raha hoon..."
+            :
+            "Thinking..."
     );
 
     const messages =
@@ -1058,14 +980,12 @@ function removeThinking() {
 
 /* ============================================================
    TIME / DATE
-   ============================================================ */
+============================================================ */
 
 function isTimeQuestion(text) {
 
     const t =
-        text
-            .toLowerCase()
-            .trim();
+        text.toLowerCase().trim();
 
     const phrases = [
 
@@ -1112,9 +1032,7 @@ function isTimeQuestion(text) {
 function isDateQuestion(text) {
 
     const t =
-        text
-            .toLowerCase()
-            .trim();
+        text.toLowerCase().trim();
 
     const phrases = [
 
@@ -1167,25 +1085,21 @@ function getTimeAnswer() {
             t.hour >= 4 &&
             t.hour < 12
         ) {
-
             part = "subah";
 
         } else if (
             t.hour >= 12 &&
             t.hour < 17
         ) {
-
             part = "dopahar";
 
         } else if (
             t.hour >= 17 &&
             t.hour < 21
         ) {
-
             part = "shaam";
 
         } else {
-
             part = "raat";
         }
 
@@ -1206,7 +1120,6 @@ function getDateAnswer() {
         getISTParts();
 
     const days = [
-
         "Sunday",
         "Monday",
         "Tuesday",
@@ -1217,7 +1130,6 @@ function getDateAnswer() {
     ];
 
     const months = [
-
         "January",
         "February",
         "March",
@@ -1249,8 +1161,8 @@ function getDateAnswer() {
 
 
 /* ============================================================
-   TTS TEXT CLEANER
-   ============================================================ */
+   CLEAN TTS
+============================================================ */
 
 function cleanForSpeech(text) {
 
@@ -1309,35 +1221,45 @@ function cleanForSpeech(text) {
 
 
 /* ============================================================
-   DESTROY MIC
-   ============================================================ */
+   DESTROY MICROPHONE - HARD
+============================================================ */
 
 function destroyMicrophone() {
 
     /*
-        This invalidates the CURRENT recognition session.
+        Increment session number first.
+        Any callbacks from the old recognition
+        become invalid immediately.
     */
 
+    recognitionSession++;
+
+
     const oldRecognition =
-        activeRecognition;
+        recognition;
 
-    activeRecognitionToken++;
 
-    activeRecognition =
+    recognition =
         null;
 
-    setMicUI(false);
+
+    showMicOff();
+
 
     if (
         oldRecognition
     ) {
 
         try {
+
             oldRecognition.abort();
+
         } catch (e) {
 
             try {
+
                 oldRecognition.stop();
+
             } catch (ignored) {}
         }
     }
@@ -1346,58 +1268,64 @@ function destroyMicrophone() {
 
 /* ============================================================
    STOP TTS
-   ============================================================ */
+============================================================ */
 
 function stopTTS() {
 
     ttsActive =
         false;
 
+
     if (
-        ttsController
+        ttsAbortController
     ) {
 
         try {
-            ttsController.abort();
+            ttsAbortController.abort();
         } catch (e) {}
 
-        ttsController =
+        ttsAbortController =
             null;
     }
 
+
     if (
-        audioPlayer
+        ttsAudio
     ) {
 
         try {
 
-            audioPlayer.pause();
+            ttsAudio.pause();
 
-            audioPlayer.currentTime =
+            ttsAudio.currentTime =
                 0;
 
-            audioPlayer.src =
+            ttsAudio.src =
                 "";
 
         } catch (e) {}
 
-        audioPlayer =
+        ttsAudio =
             null;
     }
 
+
     if (
-        audioUrl
+        ttsUrl
     ) {
 
         try {
+
             URL.revokeObjectURL(
-                audioUrl
+                ttsUrl
             );
+
         } catch (e) {}
 
-        audioUrl =
+        ttsUrl =
             null;
     }
+
 
     if (
         "speechSynthesis"
@@ -1409,6 +1337,7 @@ function stopTTS() {
         } catch (e) {}
     }
 
+
     orb.classList.remove(
         "speaking"
     );
@@ -1417,42 +1346,59 @@ function stopTTS() {
 
 /* ============================================================
    SPEAK
-   ============================================================ */
+============================================================ */
 
 async function speakText(text) {
 
     /*
-        ABSOLUTE RULE:
-        MIC MUST BE DESTROYED BEFORE TTS.
+        MIC IS KILLED BEFORE TTS.
     */
 
     destroyMicrophone();
 
+
+    /*
+        Block new microphone sessions while
+        JARVIS is generating and speaking.
+    */
+
+    micBlocked =
+        true;
+
+
     stopTTS();
+
 
     const cleanText =
         cleanForSpeech(
             text
         );
 
-    if (!cleanText) {
+    if (
+        !cleanText
+    ) {
+
+        micBlocked =
+            false;
+
         return;
     }
 
+
     ttsActive =
         true;
+
 
     orb.classList.add(
         "speaking"
     );
 
-    const requestToken =
-        Date.now();
 
     try {
 
-        ttsController =
+        ttsAbortController =
             new AbortController();
+
 
         const response =
             await fetch(
@@ -1479,9 +1425,10 @@ async function speakText(text) {
                         }),
 
                     signal:
-                        ttsController.signal
+                        ttsAbortController.signal
                 }
             );
+
 
         if (
             !response.ok
@@ -1492,40 +1439,43 @@ async function speakText(text) {
             );
         }
 
+
         /*
-            MIC IS STILL DESTROYED HERE.
+            MIC stays blocked while audio is being
+            downloaded.
         */
 
         destroyMicrophone();
 
+
         const blob =
             await response.blob();
 
-        audioUrl =
+
+        ttsUrl =
             URL.createObjectURL(
                 blob
             );
 
-        audioPlayer =
+
+        ttsAudio =
             new Audio(
-                audioUrl
+                ttsUrl
             );
 
-        audioPlayer.preload =
+
+        ttsAudio.preload =
             "auto";
 
-        audioPlayer.volume =
-            1;
 
-        audioPlayer.onplay =
+        ttsAudio.onplay =
             function() {
 
                 ttsActive =
                     true;
 
-                /*
-                    Do NOT create/start microphone.
-                */
+                micBlocked =
+                    true;
 
                 destroyMicrophone();
 
@@ -1534,7 +1484,8 @@ async function speakText(text) {
                 );
             };
 
-        audioPlayer.onended =
+
+        ttsAudio.onended =
             function() {
 
                 ttsActive =
@@ -1547,24 +1498,35 @@ async function speakText(text) {
                 );
 
                 if (
-                    audioUrl
+                    ttsUrl
                 ) {
 
                     try {
                         URL.revokeObjectURL(
-                            audioUrl
+                            ttsUrl
                         );
                     } catch (e) {}
 
-                    audioUrl =
+                    ttsUrl =
                         null;
                 }
 
-                audioPlayer =
+                ttsAudio =
                     null;
+
+                /*
+                    After JARVIS finishes, mic is still OFF.
+                    User must click the microphone.
+                */
+
+                micBlocked =
+                    false;
+
+                showMicOff();
             };
 
-        audioPlayer.onerror =
+
+        ttsAudio.onerror =
             function() {
 
                 ttsActive =
@@ -1576,17 +1538,19 @@ async function speakText(text) {
                     "speaking"
                 );
 
-                audioPlayer =
-                    null;
+                micBlocked =
+                    false;
             };
 
+
         /*
-            Final safety check immediately before playback.
+            Final safety check.
         */
 
         destroyMicrophone();
 
-        await audioPlayer.play();
+        await ttsAudio.play();
+
 
     } catch (error) {
 
@@ -1598,13 +1562,16 @@ async function speakText(text) {
             return;
         }
 
+
         console.error(
             "TTS ERROR:",
             error
         );
 
+
         ttsActive =
             false;
+
 
         destroyMicrophone();
 
@@ -1612,9 +1579,9 @@ async function speakText(text) {
             "speaking"
         );
 
+
         /*
             Browser fallback.
-            Still NO microphone.
         */
 
         if (
@@ -1627,8 +1594,10 @@ async function speakText(text) {
                     cleanText
                 );
 
+
             speech.lang =
                 "en-IN";
+
 
             speech.rate =
                 selectedLanguage ===
@@ -1636,10 +1605,14 @@ async function speakText(text) {
                     ? 0.9
                     : 0.95;
 
+
             speech.onstart =
                 function() {
 
                     ttsActive =
+                        true;
+
+                    micBlocked =
                         true;
 
                     destroyMicrophone();
@@ -1648,6 +1621,7 @@ async function speakText(text) {
                         "speaking"
                     );
                 };
+
 
             speech.onend =
                 function() {
@@ -1660,7 +1634,13 @@ async function speakText(text) {
                     orb.classList.remove(
                         "speaking"
                     );
+
+                    micBlocked =
+                        false;
+
+                    showMicOff();
                 };
+
 
             speech.onerror =
                 function() {
@@ -1673,7 +1653,11 @@ async function speakText(text) {
                     orb.classList.remove(
                         "speaking"
                     );
+
+                    micBlocked =
+                        false;
                 };
+
 
             speechSynthesis.cancel();
 
@@ -1686,38 +1670,34 @@ async function speakText(text) {
 
 
 /* ============================================================
-   START A BRAND-NEW MIC SESSION
-   ============================================================ */
+   START MIC
+============================================================ */
 
 function startMicrophone() {
 
     /*
-        Never start while JARVIS speaks.
+        NEVER allow mic during TTS.
     */
 
     if (
         ttsActive
+        ||
+        micBlocked
     ) {
+
         return;
     }
 
-    /*
-        Destroy ANY old session first.
-    */
-
-    destroyMicrophone();
 
     const SpeechRecognition =
         window.SpeechRecognition
         ||
         window.webkitSpeechRecognition;
 
+
     if (
         !SpeechRecognition
     ) {
-
-        recognitionSupported =
-            false;
 
         addMessage(
             "jarvis",
@@ -1727,222 +1707,168 @@ function startMicrophone() {
         return;
     }
 
-    recognitionSupported =
-        true;
 
-    const recognition =
+    /*
+        Destroy previous session.
+    */
+
+    destroyMicrophone();
+
+
+    const session =
+        ++recognitionSession;
+
+
+    const recognizer =
         new SpeechRecognition();
 
-    activeRecognition =
-        recognition;
 
-    const sessionToken =
-        ++activeRecognitionToken;
+    recognition =
+        recognizer;
+
 
     let finalText =
         "";
 
-    let gotFinalResult =
+
+    let finished =
         false;
 
 
     /*
-        ONE utterance only.
-        NO continuous recognition.
+        ONE QUESTION ONLY.
     */
 
-    recognition.continuous =
+    recognizer.continuous =
         false;
 
-    recognition.interimResults =
-        true;
 
-    recognition.lang =
+    /*
+        IMPORTANT:
+        No interim results.
+        This means JARVIS cannot process partial
+        text while the user is still speaking.
+    */
+
+    recognizer.interimResults =
+        false;
+
+
+    recognizer.lang =
         "en-IN";
 
 
-    recognition.onstart =
+    recognizer.onstart =
         function() {
 
             if (
-                sessionToken !==
-                activeRecognitionToken
-            ) {
-
-                try {
-                    recognition.abort();
-                } catch (e) {}
-
-                return;
-            }
-
-            if (
-                ttsActive
-            ) {
-
-                try {
-                    recognition.abort();
-                } catch (e) {}
-
-                activeRecognition =
-                    null;
-
-                setMicUI(
-                    false
-                );
-
-                return;
-            }
-
-            setMicUI(
-                true
-            );
-        };
-
-
-    recognition.onresult =
-        function(event) {
-
-            /*
-                The current session is invalid or
-                JARVIS is speaking -> IGNORE.
-            */
-
-            if (
-                sessionToken !==
-                activeRecognitionToken
+                session !==
+                recognitionSession
                 ||
                 ttsActive
+                ||
+                micBlocked
             ) {
+
+                try {
+                    recognizer.abort();
+                } catch (e) {}
 
                 return;
             }
 
-            let interimText =
-                "";
 
-            finalText =
-                "";
-
-            for (
-                let i =
-                    event.resultIndex;
-
-                i <
-                event.results.length;
-
-                i++
-            ) {
-
-                const transcript =
-                    event.results[i][0]
-                        .transcript
-                        .trim();
-
-                if (
-                    event.results[i]
-                        .isFinal
-                ) {
-
-                    finalText +=
-                        (
-                            finalText
-                                ? " "
-                                : ""
-                        )
-                        +
-                        transcript;
-
-                } else {
-
-                    interimText +=
-                        (
-                            interimText
-                                ? " "
-                                : ""
-                        )
-                        +
-                        transcript;
-                }
-            }
-
-
-            finalText =
-                finalText.trim();
-
-
-            interimText =
-                interimText.trim();
-
-
-            if (
-                interimText
-            ) {
-
-                userInput.value =
-                    interimText;
-            }
-
-
-            if (
-                finalText
-            ) {
-
-                gotFinalResult =
-                    true;
-
-                /*
-                    QUESTION IS COMPLETE.
-                    Destroy the mic immediately.
-                */
-
-                userInput.value =
-                    finalText;
-
-                destroyMicrophone();
-            }
+            showMicOn();
         };
 
 
-    recognition.onend =
-        function() {
-
-            /*
-                This callback may belong to an old session.
-            */
+    recognizer.onresult =
+        function(event) {
 
             if (
-                sessionToken !==
-                activeRecognitionToken
+                session !==
+                recognitionSession
+                ||
+                ttsActive
+                ||
+                micBlocked
             ) {
 
                 return;
             }
 
 
-            activeRecognition =
-                null;
-
-            setMicUI(
-                false
-            );
+            finalText =
+                event.results[0][0]
+                    .transcript
+                    .trim();
 
 
             if (
-                gotFinalResult
+                !finalText
+            ) {
+
+                return;
+            }
+
+
+            finished =
+                true;
+
+
+            /*
+                IMPORTANT:
+                Destroy microphone IMMEDIATELY.
+            */
+
+            userInput.value =
+                finalText;
+
+
+            destroyMicrophone();
+        };
+
+
+    recognizer.onspeechend =
+        function() {
+
+            try {
+                recognizer.stop();
+            } catch (e) {}
+        };
+
+
+    recognizer.onend =
+        function() {
+
+            if (
+                session !==
+                recognitionSession
+            ) {
+
+                return;
+            }
+
+
+            recognition =
+                null;
+
+
+            showMicOff();
+
+
+            /*
+                The mic session is COMPLETELY finished
+                before we send anything to AI.
+            */
+
+            if (
+                finished
                 &&
                 finalText
                 &&
                 !ttsActive
             ) {
-
-                /*
-                    Mic is already destroyed.
-                    NOW send the user's question.
-                */
-
-                const question =
-                    finalText;
 
                 setTimeout(
                     function() {
@@ -1950,53 +1876,52 @@ function startMicrophone() {
                         if (
                             !ttsActive
                             &&
-                            !microphoneOn
+                            !recognition
+                            &&
+                            !microphoneActive
                         ) {
 
                             sendMessage(
-                                question
+                                finalText
                             );
                         }
 
                     },
-                    50
+                    100
                 );
             }
         };
 
 
-    recognition.onerror =
+    recognizer.onerror =
         function(event) {
 
             console.log(
-                "MIC ERROR:",
+                "Recognition error:",
                 event.error
             );
 
+
             if (
-                sessionToken ===
-                activeRecognitionToken
+                session ===
+                recognitionSession
             ) {
 
-                activeRecognition =
+                recognition =
                     null;
 
-                setMicUI(
-                    false
-                );
+                showMicOff();
             }
         };
 
 
-    /*
-        START ONLY NOW.
-        This function itself is called only from
-        an explicit user click.
-    */
-
     try {
 
-        recognition.start();
+        /*
+            ONLY THIS FUNCTION STARTS THE MIC.
+        */
+
+        recognizer.start();
 
     } catch (error) {
 
@@ -2005,31 +1930,24 @@ function startMicrophone() {
             error
         );
 
-        if (
-            sessionToken ===
-            activeRecognitionToken
-        ) {
 
-            activeRecognition =
-                null;
+        recognition =
+            null;
 
-            setMicUI(
-                false
-            );
-        }
+        showMicOff();
     }
 }
 
 
 /* ============================================================
-   MIC BUTTON
-   ============================================================ */
+   MIC CLICK
+============================================================ */
 
-function micButtonClicked() {
+function handleMicClick() {
 
     /*
-        If JARVIS is speaking and the user explicitly
-        clicks the mic, stop JARVIS first.
+        Clicking while JARVIS speaks:
+        stop JARVIS, THEN allow a new mic session.
     */
 
     if (
@@ -2038,9 +1956,12 @@ function micButtonClicked() {
 
         stopTTS();
 
+        micBlocked =
+            false;
+
         setTimeout(
             startMicrophone,
-            100
+            150
         );
 
         return;
@@ -2048,14 +1969,14 @@ function micButtonClicked() {
 
 
     /*
-        If mic is currently ON, clicking again
-        simply turns it OFF.
+        Clicking while microphone is on:
+        kill microphone.
     */
 
     if (
-        activeRecognition
+        recognition
         ||
-        microphoneOn
+        microphoneActive
     ) {
 
         destroyMicrophone();
@@ -2070,14 +1991,12 @@ function micButtonClicked() {
 
 /* ============================================================
    MUSIC
-   ============================================================ */
+============================================================ */
 
 function isMusicCommand(text) {
 
     const t =
-        text
-            .toLowerCase()
-            .trim();
+        text.toLowerCase().trim();
 
     const actions = [
         "play",
@@ -2135,6 +2054,7 @@ function extractMusicQuery(text) {
         /\bplease\b/gi,
         /\bopen\b/gi,
         /\bwatch\b/gi,
+
         /\blisten\s+to\b/gi,
         /\blisten\b/gi,
 
@@ -2143,16 +2063,20 @@ function extractMusicQuery(text) {
         /\byou\s+tube\b/gi,
 
         /\b(song|music|track)\b/gi,
+
         /\b(gaana|gana|gaane)\b/gi,
+
         /\b(bajao|baja do)\b/gi,
+
         /\b(chalao|chala do)\b/gi,
+
         /\b(sunao|suna do)\b/gi,
+
         /\b(par|pe)\b/gi
     ];
 
     for (
-        const pattern
-        of patterns
+        const pattern of patterns
     ) {
 
         query =
@@ -2178,14 +2102,21 @@ async function playMusic(
 ) {
 
     destroyMicrophone();
+
     stopTTS();
+
+    micBlocked =
+        true;
+
 
     const query =
         extractMusicQuery(
             originalText
         );
 
+
     addThinking();
+
 
     try {
 
@@ -2193,12 +2124,15 @@ async function playMusic(
             await fetch(
                 "/youtube",
                 {
-                    method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
 
                     body:
                         JSON.stringify({
@@ -2208,10 +2142,13 @@ async function playMusic(
                 }
             );
 
+
         const data =
             await response.json();
 
+
         removeThinking();
+
 
         if (
             !response.ok
@@ -2226,12 +2163,14 @@ async function playMusic(
             );
         }
 
+
         if (
             data.video_id
         ) {
 
             youtubeArea.style.display =
                 "block";
+
 
             youtubePlayer.src =
                 "https://www.youtube.com/embed/"
@@ -2242,24 +2181,30 @@ async function playMusic(
                 +
                 "?autoplay=1&playsinline=1&rel=0";
 
+
             const message =
                 selectedLanguage ===
                 "hinglish"
 
                     ?
+
                 `Theek hai, ${data.title} YouTube par play kar raha hoon.`
 
                     :
+
                 `Okay, playing ${data.title} on YouTube.`;
+
 
             addMessage(
                 "jarvis",
                 message
             );
 
+
             speakText(
                 message
             );
+
 
         } else {
 
@@ -2268,20 +2213,25 @@ async function playMusic(
                 "_blank"
             );
 
+
             const message =
                 selectedLanguage ===
                 "hinglish"
 
                     ?
+
                 `YouTube par ${query} search kar raha hoon.`
 
                     :
+
                 `Searching YouTube for ${query}.`;
+
 
             addMessage(
                 "jarvis",
                 message
             );
+
 
             speakText(
                 message
@@ -2292,54 +2242,72 @@ async function playMusic(
 
         removeThinking();
 
+
         const message =
             selectedLanguage ===
             "hinglish"
 
                 ?
+
             "YouTube par song play nahi ho paaya."
 
                 :
+
             "I could not play that song on YouTube.";
+
 
         addMessage(
             "jarvis",
             message
         );
+
+
+        micBlocked =
+            false;
     }
 }
 
 
 /* ============================================================
    SEND
-   ============================================================ */
+============================================================ */
 
 async function sendMessage(
     overrideText = null
 ) {
 
     /*
-        MIC FIRST. ALWAYS OFF.
+        FIRST:
+        Kill the microphone completely.
     */
 
     destroyMicrophone();
 
+
     const prompt =
         overrideText !== null
-            ? String(
+            ?
+            String(
                 overrideText
             ).trim()
-            : userInput.value.trim();
+            :
+            userInput.value.trim();
+
 
     if (
         !prompt
     ) {
 
+        micBlocked =
+            false;
+
         return;
     }
 
+
     userInput.value =
         "";
+
 
     addMessage(
         "user",
@@ -2378,18 +2346,25 @@ async function sendMessage(
         const answer =
             getTimeAnswer();
 
+
         addMessage(
             "jarvis",
             answer
         );
 
+
         /*
-            MIC ALREADY OFF.
+            Keep mic blocked while JARVIS speaks.
         */
+
+        micBlocked =
+            true;
+
 
         speakText(
             answer
         );
+
 
         return;
     }
@@ -2408,18 +2383,21 @@ async function sendMessage(
         const answer =
             getDateAnswer();
 
+
         addMessage(
             "jarvis",
             answer
         );
 
-        /*
-            MIC ALREADY OFF.
-        */
+
+        micBlocked =
+            true;
+
 
         speakText(
             answer
         );
+
 
         return;
     }
@@ -2429,7 +2407,12 @@ async function sendMessage(
         AI
     */
 
+    micBlocked =
+        true;
+
+
     addThinking();
+
 
     try {
 
@@ -2437,15 +2420,19 @@ async function sendMessage(
             await fetch(
                 "/ask-ai",
                 {
-                    method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
 
                     body:
                         JSON.stringify({
+
                             prompt:
                                 prompt,
 
@@ -2455,10 +2442,13 @@ async function sendMessage(
                 }
             );
 
+
         const data =
             await response.json();
 
+
         removeThinking();
+
 
         if (
             !response.ok
@@ -2473,18 +2463,25 @@ async function sendMessage(
             );
         }
 
+
         addMessage(
             "jarvis",
             data.answer
         );
 
+
         /*
-            MIC IS ALREADY OFF.
+            Mic is BLOCKED before TTS starts.
         */
+
+        micBlocked =
+            true;
+
 
         speakText(
             data.answer
         );
+
 
     } catch (error) {
 
@@ -2493,22 +2490,32 @@ async function sendMessage(
             error
         );
 
+
         removeThinking();
+
 
         const message =
             selectedLanguage ===
             "hinglish"
 
                 ?
+
             "Sorry yaar, abhi server ya connection mein problem aa rahi hai."
 
                 :
+
             "Sorry, there is a server or connection problem.";
+
 
         addMessage(
             "jarvis",
             message
         );
+
+
+        micBlocked =
+            true;
+
 
         speakText(
             message
@@ -2518,8 +2525,8 @@ async function sendMessage(
 
 
 /* ============================================================
-   TYPED SEND
-   ============================================================ */
+   TYPED MESSAGE
+============================================================ */
 
 function sendTypedMessage() {
 
@@ -2531,12 +2538,13 @@ function sendTypedMessage() {
 
 /* ============================================================
    ENTER
-   ============================================================ */
+============================================================ */
 
 function handleKey(event) {
 
     if (
-        event.key === "Enter"
+        event.key ===
+        "Enter"
     ) {
 
         event.preventDefault();
@@ -2548,12 +2556,14 @@ function handleKey(event) {
 
 /* ============================================================
    INITIAL STATE
-   ============================================================ */
+============================================================ */
 
-setMicUI(false);
+showMicOff();
+
+micBlocked =
+    true;
 
 </script>
-
 
 </body>
 
