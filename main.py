@@ -39,36 +39,27 @@ OPENROUTER_URL = (
 
 OPENROUTER_MODEL = "deepseek/deepseek-chat"
 
-OPENROUTER_API_KEY = (
-    os.environ.get(
-        "OPENROUTER_API_KEY",
-        ""
-    ).strip()
-)
+OPENROUTER_API_KEY = os.environ.get(
+    "OPENROUTER_API_KEY",
+    ""
+).strip()
 
 
-# Local development fallback only.
+# Local development fallback only
 # Do NOT upload openrouter_key.txt to GitHub.
 if not OPENROUTER_API_KEY:
 
-    local_key_file = (
-        BASE_DIR / "openrouter_key.txt"
-    )
+    key_file = BASE_DIR / "openrouter_key.txt"
 
-    if local_key_file.exists():
+    if key_file.exists():
 
         try:
-
             OPENROUTER_API_KEY = (
-                local_key_file
-                .read_text(
-                    encoding="utf-8"
-                )
+                key_file
+                .read_text(encoding="utf-8")
                 .strip()
             )
-
         except Exception:
-
             OPENROUTER_API_KEY = ""
 
 
@@ -92,12 +83,14 @@ Reply naturally, clearly, and conversationally.
 
 Do not use unnecessary markdown.
 Do not use emojis unless the user asks for them.
-Do not use huge unnecessary headings.
+Do not use unnecessary huge headings.
 
-When the user asks for live/current information, never pretend
-you have live access unless the application actually provides it.
+When the user asks for current or live information,
+do not pretend that you have live access unless the
+application actually provides that information.
 
-Never claim that you performed an action that you could not perform.
+Never claim that you performed an action that you
+could not actually perform.
 """
 
 
@@ -108,23 +101,26 @@ The user selected Hinglish.
 
 Reply in natural everyday Indian Hinglish.
 
-Sound like a normal person talking, not like a textbook.
+Sound like a normal person talking.
+Do not sound like a textbook.
 
-You can freely mix Hindi and English naturally.
+Mix Hindi and English naturally.
 
-Use common conversational words such as:
-haan, theek hai, batao, abhi, kar sakte ho,
-problem aa rahi hai, bilkul, etc.
+Use normal conversational words such as:
+haan, theek hai, batao, abhi, bilkul,
+kar sakte ho, problem aa rahi hai, etc.
 
 Do not force Hindi translations of technical words.
 
 Do not use unnecessary markdown.
 Do not use emojis unless the user asks for them.
 
-When the user asks for live/current information, never pretend
-you have live access unless the application actually provides it.
+When the user asks for current or live information,
+do not pretend that you have live access unless the
+application actually provides that information.
 
-Never claim that you performed an action that you could not perform.
+Never claim that you performed an action that you
+could not actually perform.
 """
 
 
@@ -134,10 +130,7 @@ Never claim that you performed an action that you could not perform.
 
 @app.route("/")
 def home():
-
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 # ============================================================
@@ -147,68 +140,50 @@ def home():
 @app.route("/health")
 def health():
 
-    return jsonify(
-        {
-            "success": True,
-            "message": "Jarvis server is running",
-        }
-    )
+    return jsonify({
+        "success": True,
+        "message": "Jarvis server is running"
+    })
 
 
 # ============================================================
-# AI CHAT
+# AI
 # ============================================================
 
-@app.route(
-    "/ask-ai",
-    methods=["POST"]
-)
+@app.route("/ask-ai", methods=["POST"])
 def ask_ai():
 
     try:
 
         data = (
-            request.get_json(
-                silent=True
-            )
+            request.get_json(silent=True)
             or {}
         )
 
         prompt = str(
-            data.get(
-                "prompt",
-                ""
-            )
+            data.get("prompt", "")
         ).strip()
 
         language = str(
-            data.get(
-                "language",
-                "english"
-            )
+            data.get("language", "english")
         ).lower().strip()
 
 
         if not prompt:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "Please enter a message.",
-                }
-            ), 400
+            return jsonify({
+                "success": False,
+                "error": "Please enter a message."
+            }), 400
 
 
         if not OPENROUTER_API_KEY:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "OpenRouter API key is not configured.",
-                }
-            ), 500
+            return jsonify({
+                "success": False,
+                "error":
+                    "OpenRouter API key is not configured."
+            }), 500
 
 
         if language == "hinglish":
@@ -225,7 +200,6 @@ def ask_ai():
 
 
         headers = {
-
             "Authorization":
                 f"Bearer {OPENROUTER_API_KEY}",
 
@@ -248,27 +222,23 @@ def ask_ai():
             "messages": [
 
                 {
-                    "role":
-                        "system",
-
+                    "role": "system",
                     "content":
-                        system_prompt,
+                        system_prompt
                 },
 
                 {
-                    "role":
-                        "user",
-
+                    "role": "user",
                     "content":
-                        prompt,
-                },
+                        prompt
+                }
             ],
 
             "temperature":
                 0.3,
 
             "max_tokens":
-                4000,
+                4000
         }
 
 
@@ -280,7 +250,7 @@ def ask_ai():
 
             json=payload,
 
-            timeout=90,
+            timeout=90
         )
 
 
@@ -294,13 +264,8 @@ def ask_ai():
 
                 error_message = (
                     error_data
-                    .get(
-                        "error",
-                        {}
-                    )
-                    .get(
-                        "message"
-                    )
+                    .get("error", {})
+                    .get("message")
                 )
 
             except Exception:
@@ -309,28 +274,18 @@ def ask_ai():
 
 
             if not error_message:
-
-                error_message = (
-                    response.text
-                )
+                error_message = response.text
 
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        (
-                            "OpenRouter error: "
-                            + str(
-                                error_message
-                            )
-                        ),
-                }
-            ), 502
+            return jsonify({
+                "success": False,
+                "error":
+                    "OpenRouter error: "
+                    + str(error_message)
+            }), 502
 
 
         result = response.json()
-
 
         choices = result.get(
             "choices",
@@ -340,57 +295,42 @@ def ask_ai():
 
         if not choices:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "OpenRouter returned no answer.",
-                }
-            ), 502
+            return jsonify({
+                "success": False,
+                "error":
+                    "OpenRouter returned no answer."
+            }), 502
 
 
         answer = (
             choices[0]
-            .get(
-                "message",
-                {}
-            )
-            .get(
-                "content",
-                ""
-            )
+            .get("message", {})
+            .get("content", "")
         )
 
 
         if not answer:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "OpenRouter returned an empty response.",
-                }
-            ), 502
+            return jsonify({
+                "success": False,
+                "error":
+                    "OpenRouter returned an empty response."
+            }), 502
 
 
-        return jsonify(
-            {
-                "success": True,
-                "answer":
-                    answer.strip(),
-            }
-        )
+        return jsonify({
+            "success": True,
+            "answer": answer.strip()
+        })
 
 
     except requests.Timeout:
 
-        return jsonify(
-            {
-                "success": False,
-                "error":
-                    "AI request timed out. Please try again.",
-            }
-        ), 504
+        return jsonify({
+            "success": False,
+            "error":
+                "AI request timed out. Please try again."
+        }), 504
 
 
     except Exception as exc:
@@ -400,49 +340,35 @@ def ask_ai():
             repr(exc)
         )
 
-        return jsonify(
-            {
-                "success": False,
-                "error":
-                    "AI server error.",
-            }
-        ), 500
+        return jsonify({
+            "success": False,
+            "error":
+                "AI server error."
+        }), 500
 
 
 # ============================================================
 # TTS
 # ============================================================
 
-def generate_tts_file(
-    text: str,
-    output_path: str,
+async def create_tts(
+    text,
+    output_path
 ):
 
-    async def runner():
+    communicator = edge_tts.Communicate(
+        text,
+        TTS_VOICE,
+        rate="+0%",
+        volume="+0%"
+    )
 
-        communicator = (
-            edge_tts.Communicate(
-                text,
-                TTS_VOICE,
-                rate="+0%",
-                volume="+0%",
-            )
-        )
-
-        await communicator.save(
-            output_path
-        )
-
-
-    asyncio.run(
-        runner()
+    await communicator.save(
+        output_path
     )
 
 
-@app.route(
-    "/speak",
-    methods=["POST"]
-)
+@app.route("/speak", methods=["POST"])
 def speak():
 
     temp_path = None
@@ -450,32 +376,25 @@ def speak():
     try:
 
         data = (
-            request.get_json(
-                silent=True
-            )
+            request.get_json(silent=True)
             or {}
         )
 
         text = str(
-            data.get(
-                "text",
-                ""
-            )
+            data.get("text", "")
         ).strip()
 
 
         if not text:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "No text provided.",
-                }
-            ), 400
+            return jsonify({
+                "success": False,
+                "error":
+                    "No text provided."
+            }), 400
 
 
-        # Safety limit
+        # Prevent accidental huge TTS requests.
         text = text[:20000]
 
 
@@ -492,9 +411,11 @@ def speak():
         )
 
 
-        generate_tts_file(
-            text,
-            temp_path
+        asyncio.run(
+            create_tts(
+                text,
+                temp_path
+            )
         )
 
 
@@ -523,13 +444,11 @@ def speak():
                         temp_path
                     )
 
-            except Exception as cleanup_error:
+            except Exception as exc:
 
                 print(
                     "TTS CLEANUP ERROR:",
-                    repr(
-                        cleanup_error
-                    )
+                    repr(exc)
                 )
 
             return response
@@ -545,7 +464,7 @@ def speak():
 
             download_name="jarvis.mp3",
 
-            max_age=0,
+            max_age=0
         )
 
 
@@ -575,57 +494,39 @@ def speak():
             pass
 
 
-        return jsonify(
-            {
-                "success": False,
-                "error":
-                    "Voice generation failed.",
-            }
-        ), 500
+        return jsonify({
+            "success": False,
+            "error":
+                "Voice generation failed."
+        }), 500
 
 
 # ============================================================
 # YOUTUBE
 # ============================================================
 
-@app.route(
-    "/youtube",
-    methods=["POST"]
-)
+@app.route("/youtube", methods=["POST"])
 def youtube():
 
     try:
 
         data = (
-            request.get_json(
-                silent=True
-            )
+            request.get_json(silent=True)
             or {}
         )
 
         query = str(
-            data.get(
-                "query",
-                ""
-            )
+            data.get("query", "")
         ).strip()
 
 
         if not query:
 
-            return jsonify(
-                {
-                    "success": False,
-                    "error":
-                        "No YouTube query provided.",
-                }
-            ), 400
-
-
-        search_term = (
-            "ytsearch1:"
-            + query
-        )
+            return jsonify({
+                "success": False,
+                "error":
+                    "No YouTube query provided."
+            }), 400
 
 
         options = {
@@ -643,7 +544,7 @@ def youtube():
                 True,
 
             "noplaylist":
-                True,
+                True
         }
 
 
@@ -652,7 +553,7 @@ def youtube():
         ) as ydl:
 
             info = ydl.extract_info(
-                search_term,
+                "ytsearch1:" + query,
                 download=False
             )
 
@@ -671,29 +572,22 @@ def youtube():
                 + quote(query)
             )
 
-
-            return jsonify(
-                {
-                    "success": True,
-                    "video_id": None,
-                    "title": query,
-                    "url": search_url,
-                }
-            )
+            return jsonify({
+                "success": True,
+                "video_id": None,
+                "title": query,
+                "url": search_url
+            })
 
 
         entry = entries[0]
-
 
         video_id = entry.get(
             "id"
         )
 
-
         title = (
-            entry.get(
-                "title"
-            )
+            entry.get("title")
             or query
         )
 
@@ -705,18 +599,15 @@ def youtube():
                 + str(video_id)
             )
 
-
-            return jsonify(
-                {
-                    "success": True,
-                    "video_id":
-                        video_id,
-                    "title":
-                        title,
-                    "url":
-                        video_url,
-                }
-            )
+            return jsonify({
+                "success": True,
+                "video_id":
+                    video_id,
+                "title":
+                    title,
+                "url":
+                    video_url
+            })
 
 
         search_url = (
@@ -725,15 +616,12 @@ def youtube():
             + quote(query)
         )
 
-
-        return jsonify(
-            {
-                "success": True,
-                "video_id": None,
-                "title": query,
-                "url": search_url,
-            }
-        )
+        return jsonify({
+            "success": True,
+            "video_id": None,
+            "title": query,
+            "url": search_url
+        })
 
 
     except Exception as exc:
@@ -751,14 +639,12 @@ def youtube():
         )
 
 
-        return jsonify(
-            {
-                "success": True,
-                "video_id": None,
-                "title": query,
-                "url": search_url,
-            }
-        )
+        return jsonify({
+            "success": True,
+            "video_id": None,
+            "title": query,
+            "url": search_url
+        })
 
 
 # ============================================================
@@ -770,5 +656,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=PORT,
-        debug=False,
+        debug=False
     )
