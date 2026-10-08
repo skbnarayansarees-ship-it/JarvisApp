@@ -20,7 +20,7 @@
 
     <img id="logo" src="/static/logo.png" alt="Jarvis AI Logo">
     
-    <div id="status">Click anywhere to start...</div>
+    <div id="status">Click anywhere to activate Jarvis...</div>
 
     <div id="chat-box">
         <div id="conversation"></div>
@@ -38,33 +38,55 @@
         const ytContainer = document.getElementById('yt-player-container');
 
         let lastTimestamp = 0;
-        let isSpeaking = false; // NAYA FLAG: Mic ko pause karne ke liye
+        let isSpeaking = false; 
+        let lastSpokenTime = 0;
 
         window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        recognition.continuous = true;
+        
+        // Single phrase mode stops audio buffering loop
+        recognition.continuous = false;
         recognition.interimResults = false;
         recognition.lang = 'en-IN';
 
         function startListening() {
-            if (isSpeaking) return;
-            try { recognition.start(); } catch(e) {}
+            // Self-hearing prevention guard
+            if (isSpeaking || (Date.now() - lastSpokenTime < 1500)) return;
+            try { 
+                recognition.start(); 
+            } catch(e) {}
         }
 
         function speak(text) {
             isSpeaking = true;
-            try { recognition.stop(); } catch(e) {} // AI ke bolte time mic BAND
+            
+            // Abort mic immediately to clear remaining audio buffer
+            try { recognition.abort(); } catch(e) {}
+            window.speechSynthesis.cancel();
 
             const synth = window.speechSynthesis;
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
+            
             const voices = synth.getVoices();
             const preferredVoice = voices.find(v => v.lang.includes('hi-IN') || v.lang.includes('en-IN'));
             if(preferredVoice) utterance.voice = preferredVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                try { recognition.abort(); } catch(e) {}
+            };
             
             utterance.onend = () => {
                 isSpeaking = false;
-                setTimeout(startListening, 600); // Bolne ke aadhe second baad wapas ON
+                lastSpokenTime = Date.now();
+                setTimeout(startListening, 1500); // 1.5s gap after speaking stops
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                lastSpokenTime = Date.now();
+                setTimeout(startListening, 1000);
             };
 
             synth.speak(utterance);
@@ -97,14 +119,18 @@
         }
 
         recognition.onstart = () => {
-            statusEl.innerText = "Jarvis Active! Say 'Jarvis'...";
-            console.log("Listening...");
+            if (!isSpeaking && Date.now() - lastSpokenTime >= 1500) {
+                statusEl.innerText = "Jarvis Active! Say 'Jarvis'...";
+            }
         };
 
         recognition.onresult = (event) => {
-            if (isSpeaking) return; // Ignore words if AI is talking
+            // STRICT CHECK: Reject audio captured during or immediately after speech
+            if (isSpeaking || (Date.now() - lastSpokenTime < 1500)) {
+                return;
+            }
 
-            const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+            const transcript = event.results[0][0].transcript.toLowerCase().trim();
             console.log("Heard:", transcript);
 
             if (transcript.includes('jarvis')) {
@@ -118,11 +144,13 @@
             }
         };
 
-        recognition.onerror = (event) => { console.error("Mic Error:", event.error); };
+        recognition.onerror = (event) => { 
+            console.error("Mic Error:", event.error); 
+        };
         
         recognition.onend = () => {
-            if (!isSpeaking) {
-                setTimeout(startListening, 500); // Always stay alive unless speaking
+            if (!isSpeaking && (Date.now() - lastSpokenTime >= 1500)) {
+                setTimeout(startListening, 400);
             }
         };
 
@@ -130,7 +158,7 @@
             startListening();
         }, { once: true });
 
-        // Device Sync
+        // Global Device Sync
         setInterval(() => {
             fetch('/sync')
                 .then(r => r.json())
