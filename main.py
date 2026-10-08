@@ -1,660 +1,3038 @@
-from flask import (
-    Flask,
-    request,
-    jsonify,
-    render_template,
-    send_file,
-    after_this_request,
-)
-from pathlib import Path
-from urllib.parse import quote
-import asyncio
-import os
-import tempfile
-import uuid
+<!DOCTYPE html>
+<html lang="en">
 
-import requests
-import edge_tts
-import yt_dlp
+<head>
 
+    <meta charset="UTF-8">
 
-# ============================================================
-# APP
-# ============================================================
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-app = Flask(__name__)
+    <meta
+        name="theme-color"
+        content="#070b12"
+    >
 
-PORT = int(os.environ.get("PORT", "5000"))
 
-BASE_DIR = Path(__file__).resolve().parent
+    <!-- =====================================================
+         FAVICON
+    ====================================================== -->
 
+    <link
+        rel="icon"
+        type="image/png"
+        href="{{ url_for('static', filename='logo.png') }}?v=30"
+    >
 
-# ============================================================
-# OPENROUTER
-# ============================================================
+    <link
+        rel="shortcut icon"
+        type="image/png"
+        href="{{ url_for('static', filename='logo.png') }}?v=30"
+    >
 
-OPENROUTER_URL = (
-    "https://openrouter.ai/api/v1/chat/completions"
-)
 
-OPENROUTER_MODEL = "deepseek/deepseek-chat"
+    <title>JARVIS AI Assistant</title>
 
-OPENROUTER_API_KEY = os.environ.get(
-    "OPENROUTER_API_KEY",
-    ""
-).strip()
 
+    <style>
 
-# Local development fallback only
-# Do NOT upload openrouter_key.txt to GitHub.
-if not OPENROUTER_API_KEY:
-
-    key_file = BASE_DIR / "openrouter_key.txt"
-
-    if key_file.exists():
-
-        try:
-            OPENROUTER_API_KEY = (
-                key_file
-                .read_text(encoding="utf-8")
-                .strip()
-            )
-        except Exception:
-            OPENROUTER_API_KEY = ""
-
-
-# ============================================================
-# TTS
-# ============================================================
-
-TTS_VOICE = "en-IN-PrabhatNeural"
-
-
-# ============================================================
-# AI PROMPTS
-# ============================================================
-
-ENGLISH_SYSTEM_PROMPT = """
-You are JARVIS, a helpful AI web assistant.
-
-The user selected English.
-
-Reply naturally, clearly, and conversationally.
-
-Do not use unnecessary markdown.
-Do not use emojis unless the user asks for them.
-Do not use unnecessary huge headings.
-
-When the user asks for current or live information,
-do not pretend that you have live access unless the
-application actually provides that information.
-
-Never claim that you performed an action that you
-could not actually perform.
-"""
-
-
-HINGLISH_SYSTEM_PROMPT = """
-You are JARVIS, a friendly AI web assistant.
-
-The user selected Hinglish.
-
-Reply in natural everyday Indian Hinglish.
-
-Sound like a normal person talking.
-Do not sound like a textbook.
-
-Mix Hindi and English naturally.
-
-Use normal conversational words such as:
-haan, theek hai, batao, abhi, bilkul,
-kar sakte ho, problem aa rahi hai, etc.
-
-Do not force Hindi translations of technical words.
-
-Do not use unnecessary markdown.
-Do not use emojis unless the user asks for them.
-
-When the user asks for current or live information,
-do not pretend that you have live access unless the
-application actually provides that information.
-
-Never claim that you performed an action that you
-could not actually perform.
-"""
-
-
-# ============================================================
-# HOME
-# ============================================================
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-# ============================================================
-# HEALTH
-# ============================================================
-
-@app.route("/health")
-def health():
-
-    return jsonify({
-        "success": True,
-        "message": "Jarvis server is running"
-    })
-
-
-# ============================================================
-# AI
-# ============================================================
-
-@app.route("/ask-ai", methods=["POST"])
-def ask_ai():
-
-    try:
-
-        data = (
-            request.get_json(silent=True)
-            or {}
-        )
-
-        prompt = str(
-            data.get("prompt", "")
-        ).strip()
-
-        language = str(
-            data.get("language", "english")
-        ).lower().strip()
-
-
-        if not prompt:
-
-            return jsonify({
-                "success": False,
-                "error": "Please enter a message."
-            }), 400
-
-
-        if not OPENROUTER_API_KEY:
-
-            return jsonify({
-                "success": False,
-                "error":
-                    "OpenRouter API key is not configured."
-            }), 500
-
-
-        if language == "hinglish":
-
-            system_prompt = (
-                HINGLISH_SYSTEM_PROMPT
-            )
-
-        else:
-
-            system_prompt = (
-                ENGLISH_SYSTEM_PROMPT
-            )
-
-
-        headers = {
-            "Authorization":
-                f"Bearer {OPENROUTER_API_KEY}",
-
-            "Content-Type":
-                "application/json",
-
-            "HTTP-Referer":
-                request.host_url.rstrip("/"),
-
-            "X-Title":
-                "JARVIS AI Assistant",
+        * {
+            box-sizing: border-box;
         }
 
 
-        payload = {
+        html,
+        body {
 
-            "model":
-                OPENROUTER_MODEL,
+            margin: 0;
 
-            "messages": [
+            width: 100%;
 
+            min-height: 100%;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at top,
+                    #18243b 0%,
+                    #070b12 48%,
+                    #030509 100%
+                );
+
+            color: white;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+        }
+
+
+        .app {
+
+            width:
+                min(1000px, 95vw);
+
+            min-height:
+                95vh;
+
+            display: flex;
+
+            flex-direction: column;
+
+            padding: 18px;
+        }
+
+
+        /* =====================================================
+           TOP BAR
+        ====================================================== */
+
+        .topbar {
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+
+            gap: 15px;
+
+            padding-bottom: 15px;
+        }
+
+
+        .brand-area {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+        }
+
+
+        .top-logo {
+
+            width: 58px;
+
+            height: 58px;
+
+            object-fit: cover;
+
+            object-position: center;
+
+            border-radius: 12px;
+
+            background:
+                white;
+
+            display: block;
+
+            flex-shrink: 0;
+        }
+
+
+        .brand {
+
+            font-size: 28px;
+
+            font-weight: 800;
+
+            letter-spacing: 3px;
+        }
+
+
+        .status {
+
+            text-align:
+                right;
+
+            font-size:
+                13px;
+
+            opacity:
+                .78;
+        }
+
+
+        #istClock {
+
+            margin-top: 5px;
+
+            font-size: 15px;
+
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           LANGUAGE
+        ====================================================== */
+
+        #languageScreen {
+
+            flex: 1;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+        }
+
+
+        .language-card {
+
+            width:
+                min(470px, 94vw);
+
+            padding: 35px;
+
+            border-radius: 26px;
+
+            background:
+                rgba(255,255,255,.06);
+
+            border:
+                1px solid
+                rgba(255,255,255,.10);
+
+            backdrop-filter:
+                blur(20px);
+
+            text-align:
+                center;
+        }
+
+
+        .language-card h1 {
+
+            margin:
+                0 0 10px;
+
+            font-size:
+                34px;
+        }
+
+
+        .language-card p {
+
+            margin:
+                0 0 25px;
+
+            opacity:
+                .70;
+        }
+
+
+        .lang-button {
+
+            width:
+                100%;
+
+            margin-top:
+                12px;
+
+            padding:
+                17px 20px;
+
+            border:
+                0;
+
+            border-radius:
+                16px;
+
+            background:
+                rgba(255,255,255,.10);
+
+            color:
+                white;
+
+            font-size:
+                17px;
+
+            font-weight:
+                700;
+
+            cursor:
+                pointer;
+        }
+
+
+        .lang-button:hover {
+
+            background:
+                rgba(255,255,255,.19);
+        }
+
+
+        /* =====================================================
+           CHAT
+        ====================================================== */
+
+        #chatScreen {
+
+            display:
+                none;
+
+            flex:
+                1;
+
+            flex-direction:
+                column;
+
+            min-height:
+                0;
+        }
+
+
+        .chat-box {
+
+            flex:
+                1;
+
+            min-height:
+                0;
+
+            overflow-y:
+                auto;
+
+            padding:
+                5px 2px 20px;
+        }
+
+
+        .message-row {
+
+            display:
+                flex;
+
+            margin:
+                12px 0;
+        }
+
+
+        .message-row.user {
+
+            justify-content:
+                flex-end;
+        }
+
+
+        .message-row.jarvis {
+
+            justify-content:
+                flex-start;
+        }
+
+
+        .message {
+
+            max-width:
+                min(760px, 88%);
+
+            padding:
+                14px 17px;
+
+            border-radius:
+                18px;
+
+            line-height:
+                1.55;
+
+            white-space:
+                pre-wrap;
+
+            overflow-wrap:
+                anywhere;
+        }
+
+
+        .message.user {
+
+            background:
+                #2667ff;
+        }
+
+
+        .message.jarvis {
+
+            background:
+                rgba(255,255,255,.08);
+
+            border:
+                1px solid
+                rgba(255,255,255,.08);
+        }
+
+
+        .thinking {
+
+            opacity:
+                .60;
+
+            font-style:
+                italic;
+        }
+
+
+        /* =====================================================
+           YOUTUBE
+        ====================================================== */
+
+        .youtube-area {
+
+            display:
+                none;
+
+            width:
+                min(760px, 100%);
+
+            margin:
+                5px auto 15px;
+
+            border-radius:
+                18px;
+
+            overflow:
+                hidden;
+
+            background:
+                black;
+        }
+
+
+        .youtube-area iframe {
+
+            display:
+                block;
+
+            width:
+                100%;
+
+            aspect-ratio:
+                16 / 9;
+
+            border:
+                0;
+        }
+
+
+        /* =====================================================
+           ORB
+        ====================================================== */
+
+        .orb-area {
+
+            display:
+                flex;
+
+            justify-content:
+                center;
+
+            align-items:
+                center;
+
+            padding:
+                12px 0 17px;
+        }
+
+
+        .orb {
+
+            width:
+                100px;
+
+            height:
+                100px;
+
+            border-radius:
+                50%;
+
+            background:
+                radial-gradient(
+                    circle at 30% 30%,
+                    #ffffff,
+                    #70a7ff 18%,
+                    #2465ff 50%,
+                    #10204a 72%,
+                    #050912 100%
+                );
+
+            box-shadow:
+                0 0 25px
+                rgba(80,140,255,.80),
+
+                0 0 75px
+                rgba(50,100,255,.40);
+
+            cursor:
+                pointer;
+
+            transition:
+                transform .15s,
+                box-shadow .15s;
+        }
+
+
+        .orb.listening {
+
+            animation:
+                pulse .65s infinite
+                alternate;
+        }
+
+
+        .orb.speaking {
+
+            box-shadow:
+                0 0 30px
+                rgba(90,160,255,.95),
+
+                0 0 100px
+                rgba(50,100,255,.65);
+        }
+
+
+        @keyframes pulse {
+
+            from {
+                transform:
+                    scale(1);
+            }
+
+            to {
+                transform:
+                    scale(1.12);
+            }
+        }
+
+
+        /* =====================================================
+           INPUT
+        ====================================================== */
+
+        .input-area {
+
+            display:
+                flex;
+
+            gap:
+                10px;
+
+            align-items:
+                center;
+        }
+
+
+        #userInput {
+
+            flex:
+                1;
+
+            min-width:
+                0;
+
+            padding:
+                16px 18px;
+
+            border-radius:
+                16px;
+
+            border:
+                1px solid
+                rgba(255,255,255,.10);
+
+            background:
+                rgba(255,255,255,.06);
+
+            color:
+                white;
+
+            font-size:
+                16px;
+
+            outline:
+                none;
+        }
+
+
+        #userInput::placeholder {
+
+            color:
+                rgba(255,255,255,.45);
+        }
+
+
+        .mic-button,
+        .send-button {
+
+            width:
+                54px;
+
+            height:
+                54px;
+
+            flex-shrink:
+                0;
+
+            border:
+                0;
+
+            border-radius:
+                16px;
+
+            background:
+                rgba(255,255,255,.10);
+
+            color:
+                white;
+
+            cursor:
+                pointer;
+
+            font-size:
+                20px;
+        }
+
+
+        .mic-button:hover,
+        .send-button:hover {
+
+            background:
+                rgba(255,255,255,.18);
+        }
+
+
+        /* =====================================================
+           FOOTER
+        ====================================================== */
+
+        .footer {
+
+            text-align:
+                center;
+
+            margin-top:
+                10px;
+
+            padding:
+                8px 0 3px;
+
+            font-size:
+                12px;
+
+            color:
+                rgba(255,255,255,.58);
+        }
+
+
+        .developer-name {
+
+            color:
+                rgba(255,255,255,.90);
+
+            font-weight:
+                700;
+        }
+
+
+        /* =====================================================
+           MOBILE
+        ====================================================== */
+
+        @media (max-width: 650px) {
+
+            .app {
+
+                width:
+                    100vw;
+
+                min-height:
+                    100vh;
+
+                padding:
+                    12px;
+            }
+
+
+            .brand {
+
+                font-size:
+                    21px;
+
+                letter-spacing:
+                    2px;
+            }
+
+
+            .top-logo {
+
+                width:
+                    48px;
+
+                height:
+                    48px;
+            }
+
+
+            .status {
+
+                font-size:
+                    11px;
+            }
+
+
+            #istClock {
+
+                font-size:
+                    13px;
+            }
+
+
+            .language-card {
+
+                padding:
+                    28px 20px;
+            }
+
+
+            .message {
+
+                max-width:
+                    94%;
+            }
+
+
+            .orb {
+
+                width:
+                    86px;
+
+                height:
+                    86px;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="app">
+
+
+    <!-- =====================================================
+         TOP BAR
+    ====================================================== -->
+
+    <div class="topbar">
+
+
+        <div class="brand-area">
+
+
+            <img
+                src="{{ url_for('static', filename='logo.png') }}?v=30"
+                alt="JARVIS"
+                class="top-logo"
+            >
+
+
+            <div class="brand">
+                J.A.R.V.I.S.
+            </div>
+
+
+        </div>
+
+
+        <div class="status">
+
+
+            <div id="languageStatus">
+                Language not selected
+            </div>
+
+
+            <div id="istClock">
+                IST --:--:-- --
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+    <!-- =====================================================
+         LANGUAGE SCREEN
+    ====================================================== -->
+
+    <section id="languageScreen">
+
+
+        <div class="language-card">
+
+
+            <h1>
+                Welcome to JARVIS
+            </h1>
+
+
+            <p>
+                Select your conversation language
+            </p>
+
+
+            <button
+                class="lang-button"
+                onclick="selectLanguage('english')"
+            >
+                1 — English
+            </button>
+
+
+            <button
+                class="lang-button"
+                onclick="selectLanguage('hinglish')"
+            >
+                2 — Hinglish
+            </button>
+
+
+        </div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         CHAT SCREEN
+    ====================================================== -->
+
+    <section id="chatScreen">
+
+
+        <div
+            class="chat-box"
+            id="chatBox"
+        ></div>
+
+
+        <!-- YOUTUBE -->
+
+        <div
+            class="youtube-area"
+            id="youtubeArea"
+        >
+
+            <iframe
+                id="youtubePlayer"
+                allow="
+                    autoplay;
+                    encrypted-media;
+                    picture-in-picture
+                "
+                allowfullscreen
+            ></iframe>
+
+        </div>
+
+
+        <!-- ORB -->
+
+        <div class="orb-area">
+
+
+            <div
+                class="orb"
+                id="orb"
+                onclick="manualMicToggle()"
+                title="Click to speak"
+            ></div>
+
+
+        </div>
+
+
+        <!-- INPUT -->
+
+        <div class="input-area">
+
+
+            <button
+                class="mic-button"
+                id="micButton"
+                onclick="manualMicToggle()"
+                title="Microphone"
+            >
+                🎤
+            </button>
+
+
+            <input
+                id="userInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Type your message..."
+                onkeydown="handleKey(event)"
+            >
+
+
+            <button
+                class="send-button"
+                onclick="sendMessage()"
+                title="Send"
+            >
+                ➤
+            </button>
+
+
+        </div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+
+    <div class="footer">
+
+        Developed by
+        <span class="developer-name">
+            Aryan
+        </span>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+
+let selectedLanguage = null;
+
+let recognition = null;
+
+let recognitionSupported = false;
+
+let isListening = false;
+
+let userStartedListening = false;
+
+let ttsSpeaking = false;
+
+let currentAudio = null;
+
+let currentAudioUrl = null;
+
+let ttsAbortController = null;
+
+let ttsGeneration = 0;
+
+
+// ============================================================
+// ELEMENTS
+// ============================================================
+
+const languageScreen =
+    document.getElementById(
+        "languageScreen"
+    );
+
+
+const chatScreen =
+    document.getElementById(
+        "chatScreen"
+    );
+
+
+const chatBox =
+    document.getElementById(
+        "chatBox"
+    );
+
+
+const userInput =
+    document.getElementById(
+        "userInput"
+    );
+
+
+const orb =
+    document.getElementById(
+        "orb"
+    );
+
+
+const micButton =
+    document.getElementById(
+        "micButton"
+    );
+
+
+const languageStatus =
+    document.getElementById(
+        "languageStatus"
+    );
+
+
+const istClock =
+    document.getElementById(
+        "istClock"
+    );
+
+
+const youtubeArea =
+    document.getElementById(
+        "youtubeArea"
+    );
+
+
+const youtubePlayer =
+    document.getElementById(
+        "youtubePlayer"
+    );
+
+
+// ============================================================
+// IST CLOCK
+// ============================================================
+
+const IST_OFFSET =
+    19800000;
+
+
+function getISTParts() {
+
+    const date =
+        new Date(
+            Date.now()
+            +
+            IST_OFFSET
+        );
+
+
+    return {
+
+        year:
+            date.getUTCFullYear(),
+
+        month:
+            date.getUTCMonth() + 1,
+
+        date:
+            date.getUTCDate(),
+
+        hour:
+            date.getUTCHours(),
+
+        minute:
+            date.getUTCMinutes(),
+
+        second:
+            date.getUTCSeconds(),
+
+        day:
+            date.getUTCDay()
+    };
+}
+
+
+function pad(value) {
+
+    return String(value)
+        .padStart(
+            2,
+            "0"
+        );
+}
+
+
+function hour12(value) {
+
+    const h =
+        value % 12;
+
+
+    return h === 0
+        ? 12
+        : h;
+}
+
+
+function ampm(value) {
+
+    return value < 12
+        ? "AM"
+        : "PM";
+}
+
+
+function updateClock() {
+
+    const t =
+        getISTParts();
+
+
+    istClock.textContent =
+        `IST ${pad(hour12(t.hour))}:${pad(t.minute)}:${pad(t.second)} ${ampm(t.hour)}`;
+}
+
+
+updateClock();
+
+
+setInterval(
+    updateClock,
+    1000
+);
+
+
+// ============================================================
+// LANGUAGE
+// ============================================================
+
+function selectLanguage(
+    language
+) {
+
+    selectedLanguage =
+        language;
+
+
+    languageScreen.style.display =
+        "none";
+
+
+    chatScreen.style.display =
+        "flex";
+
+
+    languageStatus.textContent =
+        language === "hinglish"
+            ? "Hinglish selected"
+            : "English selected";
+
+
+    if (
+        language === "hinglish"
+    ) {
+
+        addMessage(
+            "jarvis",
+            "Haan bilkul. Main naturally Hinglish mein baat karunga. Batao kya poochna hai."
+        );
+
+    } else {
+
+        addMessage(
+            "jarvis",
+            "Hello. I'm JARVIS. How can I help you?"
+        );
+    }
+
+
+    initializeRecognition();
+
+
+    userInput.focus();
+}
+
+
+// ============================================================
+// MESSAGE
+// ============================================================
+
+function addMessage(
+    type,
+    text
+) {
+
+    const row =
+        document.createElement(
+            "div"
+        );
+
+
+    row.className =
+        `message-row ${type}`;
+
+
+    const bubble =
+        document.createElement(
+            "div"
+        );
+
+
+    bubble.className =
+        `message ${type}`;
+
+
+    bubble.textContent =
+        text;
+
+
+    row.appendChild(
+        bubble
+    );
+
+
+    chatBox.appendChild(
+        row
+    );
+
+
+    chatBox.scrollTop =
+        chatBox.scrollHeight;
+}
+
+
+function addThinking() {
+
+    addMessage(
+        "jarvis",
+
+        selectedLanguage === "hinglish"
+            ? "Soch raha hoon..."
+            : "Thinking..."
+    );
+
+
+    const messages =
+        document.querySelectorAll(
+            ".message.jarvis"
+        );
+
+
+    if (
+        messages.length
+    ) {
+
+        messages[
+            messages.length - 1
+        ].classList.add(
+            "thinking"
+        );
+    }
+}
+
+
+function removeThinking() {
+
+    const messages =
+        document.querySelectorAll(
+            ".message.jarvis"
+        );
+
+
+    if (
+        !messages.length
+    ) {
+
+        return;
+    }
+
+
+    const last =
+        messages[
+            messages.length - 1
+        ];
+
+
+    if (
+        last.textContent ===
+            "Thinking..."
+        ||
+        last.textContent ===
+            "Soch raha hoon..."
+    ) {
+
+        last.parentElement.remove();
+    }
+}
+
+
+// ============================================================
+// TIME / DATE
+// ============================================================
+
+function isTimeQuestion(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const phrases = [
+
+        "what time is it",
+        "what's the time",
+        "whats the time",
+        "current time",
+        "current ist time",
+        "ist time",
+        "india time",
+        "indian time",
+        "kolkata time",
+        "time in kolkata",
+        "time in india",
+        "tell me the time",
+
+        "abhi kya time hai",
+        "abhi kitne baje hain",
+        "abhi kitne baje hai",
+        "abhi time kya hai",
+        "abhi ka time kya hai",
+        "time kya hai",
+        "time batao",
+        "time bata",
+        "kitne baje hain",
+        "kitne baje hai",
+        "india mein kya time hai",
+        "india me kya time hai",
+        "kolkata mein kya time hai",
+        "kolkata me kya time hai"
+    ];
+
+
+    return phrases.some(
+        phrase =>
+            t.includes(
+                phrase
+            )
+    );
+}
+
+
+function isDateQuestion(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const phrases = [
+
+        "what date is it",
+        "what is today's date",
+        "what's today's date",
+        "today's date",
+        "todays date",
+        "current date",
+        "today date",
+        "date today",
+        "what day is today",
+        "which day is today",
+
+        "aaj ki date kya hai",
+        "aaj ki tarikh kya hai",
+        "aaj kya date hai",
+        "aaj ka din kya hai",
+        "aaj ka day kya hai",
+        "aaj konsa din hai",
+        "aaj kaun sa din hai",
+        "aaj ka date kya hai"
+    ];
+
+
+    return phrases.some(
+        phrase =>
+            t.includes(
+                phrase
+            )
+    );
+}
+
+
+function getTimeAnswer() {
+
+    const t =
+        getISTParts();
+
+
+    const exact =
+        `${hour12(t.hour)}:${pad(t.minute)}:${pad(t.second)} ${ampm(t.hour)}`;
+
+
+    if (
+        selectedLanguage === "hinglish"
+    ) {
+
+        let part;
+
+
+        if (
+            t.hour >= 4
+            &&
+            t.hour < 12
+        ) {
+
+            part = "subah";
+
+        } else if (
+            t.hour >= 12
+            &&
+            t.hour < 17
+        ) {
+
+            part = "dopahar";
+
+        } else if (
+            t.hour >= 17
+            &&
+            t.hour < 21
+        ) {
+
+            part = "shaam";
+
+        } else {
+
+            part = "raat";
+        }
+
+
+        return (
+            `Abhi Kolkata aur poore India mein IST ke hisaab se ${exact} ho rahe hain, yani ${part} ka time hai.`
+        );
+    }
+
+
+    return (
+        `The current time in Kolkata, India is ${exact} IST.`
+    );
+}
+
+
+function getDateAnswer() {
+
+    const t =
+        getISTParts();
+
+
+    const days = [
+
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+    ];
+
+
+    const months = [
+
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+    ];
+
+
+    if (
+        selectedLanguage === "hinglish"
+    ) {
+
+        return (
+            `Aaj ${days[t.day]} hai aur IST ke hisaab se date ${t.date} ${months[t.month - 1]} ${t.year} hai.`
+        );
+    }
+
+
+    return (
+        `Today is ${days[t.day]}, ${t.date} ${months[t.month - 1]} ${t.year} in India.`
+    );
+}
+
+
+// ============================================================
+// CLEAN TTS TEXT
+// ============================================================
+
+function cleanForSpeech(
+    text
+) {
+
+    let result =
+        String(
+            text || ""
+        );
+
+
+    result =
+        result.replace(
+            /```[\s\S]*?```/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /\[([^\]]+)\]\([^)]+\)/g,
+            "$1"
+        );
+
+
+    result =
+        result.replace(
+            /[*_#>`~|]/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /["“”‘’]/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /[\[\]\{\}]/g,
+            " "
+        );
+
+
+    try {
+
+        result =
+            result.replace(
+                /\p{Extended_Pictographic}/gu,
+                " "
+            );
+
+    } catch (e) {
+    }
+
+
+    return result
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .trim();
+}
+
+
+// ============================================================
+// HARD STOP TTS
+// ============================================================
+
+function stopTTS() {
+
+    ttsGeneration++;
+
+
+    ttsSpeaking =
+        false;
+
+
+    if (
+        ttsAbortController
+    ) {
+
+        try {
+
+            ttsAbortController.abort();
+
+        } catch (e) {
+        }
+
+
+        ttsAbortController =
+            null;
+    }
+
+
+    if (
+        currentAudio
+    ) {
+
+        try {
+
+            currentAudio.pause();
+
+            currentAudio.currentTime =
+                0;
+
+            currentAudio.src =
+                "";
+
+        } catch (e) {
+        }
+
+
+        currentAudio =
+            null;
+    }
+
+
+    if (
+        currentAudioUrl
+    ) {
+
+        try {
+
+            URL.revokeObjectURL(
+                currentAudioUrl
+            );
+
+        } catch (e) {
+        }
+
+
+        currentAudioUrl =
+            null;
+    }
+
+
+    if (
+        "speechSynthesis"
+        in window
+    ) {
+
+        try {
+
+            speechSynthesis.cancel();
+
+        } catch (e) {
+        }
+    }
+
+
+    orb.classList.remove(
+        "speaking"
+    );
+}
+
+
+// ============================================================
+// FORCE STOP RECOGNITION
+//
+// Recognition is NEVER automatically restarted.
+// ============================================================
+
+function stopRecognition() {
+
+    if (
+        !recognition
+    ) {
+
+        return;
+    }
+
+
+    userStartedListening =
+        false;
+
+
+    recognitionMode =
+        "idle";
+
+
+    try {
+
+        recognition.abort();
+
+    } catch (e) {
+
+        try {
+
+            recognition.stop();
+
+        } catch (ignored) {
+        }
+    }
+
+
+    isListening =
+        false;
+
+
+    orb.classList.remove(
+        "listening"
+    );
+
+
+    micButton.textContent =
+        "🎤";
+}
+
+
+// ============================================================
+// SPEAK
+//
+// VERY IMPORTANT:
+// This function NEVER starts speech recognition.
+// ============================================================
+
+async function speakText(
+    text
+) {
+
+    /*
+        Before JARVIS speaks:
+
+        1. Stop any microphone recognition.
+        2. Mark TTS as active.
+        3. Only then play audio.
+    */
+
+    stopRecognition();
+
+    stopTTS();
+
+
+    const cleanText =
+        cleanForSpeech(
+            text
+        );
+
+
+    if (
+        !cleanText
+    ) {
+
+        return;
+    }
+
+
+    ttsSpeaking =
+        true;
+
+
+    orb.classList.add(
+        "speaking"
+    );
+
+
+    const generation =
+        ttsGeneration;
+
+
+    try {
+
+        ttsAbortController =
+            new AbortController();
+
+
+        const response =
+            await fetch(
+                "/speak",
                 {
-                    "role": "system",
-                    "content":
-                        system_prompt
-                },
 
-                {
-                    "role": "user",
-                    "content":
-                        prompt
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                    body:
+                        JSON.stringify({
+
+                            text:
+                                cleanText,
+
+                            language:
+                                selectedLanguage
+                        }),
+
+                    signal:
+                        ttsAbortController
+                            .signal
                 }
-            ],
+            );
 
-            "temperature":
-                0.3,
 
-            "max_tokens":
-                4000
+        if (
+            generation !==
+            ttsGeneration
+        ) {
+
+            return;
         }
 
 
-        response = requests.post(
+        if (
+            !response.ok
+        ) {
 
-            OPENROUTER_URL,
-
-            headers=headers,
-
-            json=payload,
-
-            timeout=90
-        )
+            throw new Error(
+                "TTS server failed."
+            );
+        }
 
 
-        if response.status_code != 200:
-
-            try:
-
-                error_data = (
-                    response.json()
-                )
-
-                error_message = (
-                    error_data
-                    .get("error", {})
-                    .get("message")
-                )
-
-            except Exception:
-
-                error_message = None
+        const blob =
+            await response.blob();
 
 
-            if not error_message:
-                error_message = response.text
+        if (
+            generation !==
+            ttsGeneration
+        ) {
+
+            return;
+        }
 
 
-            return jsonify({
-                "success": False,
-                "error":
-                    "OpenRouter error: "
-                    + str(error_message)
-            }), 502
+        currentAudioUrl =
+            URL.createObjectURL(
+                blob
+            );
 
 
-        result = response.json()
-
-        choices = result.get(
-            "choices",
-            []
-        )
+        currentAudio =
+            new Audio(
+                currentAudioUrl
+            );
 
 
-        if not choices:
-
-            return jsonify({
-                "success": False,
-                "error":
-                    "OpenRouter returned no answer."
-            }), 502
+        currentAudio.preload =
+            "auto";
 
 
-        answer = (
-            choices[0]
-            .get("message", {})
-            .get("content", "")
-        )
+        currentAudio.volume =
+            1;
 
 
-        if not answer:
+        currentAudio.onplay =
+            function() {
 
-            return jsonify({
-                "success": False,
-                "error":
-                    "OpenRouter returned an empty response."
-            }), 502
+                ttsSpeaking =
+                    true;
 
+                orb.classList.add(
+                    "speaking"
+                );
 
-        return jsonify({
-            "success": True,
-            "answer": answer.strip()
-        })
-
-
-    except requests.Timeout:
-
-        return jsonify({
-            "success": False,
-            "error":
-                "AI request timed out. Please try again."
-        }), 504
+                /*
+                    NO microphone starts here.
+                */
+            };
 
 
-    except Exception as exc:
+        currentAudio.onended =
+            function() {
 
-        print(
-            "ASK AI ERROR:",
-            repr(exc)
-        )
-
-        return jsonify({
-            "success": False,
-            "error":
-                "AI server error."
-        }), 500
+                ttsSpeaking =
+                    false;
 
 
-# ============================================================
-# TTS
-# ============================================================
+                orb.classList.remove(
+                    "speaking"
+                );
 
-async def create_tts(
-    text,
-    output_path
-):
-
-    communicator = edge_tts.Communicate(
-        text,
-        TTS_VOICE,
-        rate="+0%",
-        volume="+0%"
-    )
-
-    await communicator.save(
-        output_path
-    )
-
-
-@app.route("/speak", methods=["POST"])
-def speak():
-
-    temp_path = None
-
-    try:
-
-        data = (
-            request.get_json(silent=True)
-            or {}
-        )
-
-        text = str(
-            data.get("text", "")
-        ).strip()
-
-
-        if not text:
-
-            return jsonify({
-                "success": False,
-                "error":
-                    "No text provided."
-            }), 400
-
-
-        # Prevent accidental huge TTS requests.
-        text = text[:20000]
-
-
-        filename = (
-            "jarvis_"
-            + uuid.uuid4().hex
-            + ".mp3"
-        )
-
-
-        temp_path = os.path.join(
-            tempfile.gettempdir(),
-            filename
-        )
-
-
-        asyncio.run(
-            create_tts(
-                text,
-                temp_path
-            )
-        )
-
-
-        if not os.path.exists(
-            temp_path
-        ):
-
-            raise RuntimeError(
-                "TTS file was not created."
-            )
-
-
-        @after_this_request
-        def cleanup(response):
-
-            try:
 
                 if (
-                    temp_path
-                    and os.path.exists(
-                        temp_path
-                    )
-                ):
+                    currentAudioUrl
+                ) {
 
-                    os.remove(
-                        temp_path
-                    )
+                    try {
 
-            except Exception as exc:
+                        URL.revokeObjectURL(
+                            currentAudioUrl
+                        );
 
-                print(
-                    "TTS CLEANUP ERROR:",
-                    repr(exc)
-                )
-
-            return response
+                    } catch (e) {
+                    }
 
 
-        return send_file(
-
-            temp_path,
-
-            mimetype="audio/mpeg",
-
-            as_attachment=False,
-
-            download_name="jarvis.mp3",
-
-            max_age=0
-        )
+                    currentAudioUrl =
+                        null;
+                }
 
 
-    except Exception as exc:
-
-        print(
-            "TTS ERROR:",
-            repr(exc)
-        )
+                currentAudio =
+                    null;
+            };
 
 
-        try:
+        currentAudio.onerror =
+            function() {
 
-            if (
-                temp_path
-                and os.path.exists(
-                    temp_path
-                )
-            ):
-
-                os.remove(
-                    temp_path
-                )
-
-        except Exception:
-
-            pass
+                ttsSpeaking =
+                    false;
 
 
-        return jsonify({
-            "success": False,
-            "error":
-                "Voice generation failed."
-        }), 500
+                orb.classList.remove(
+                    "speaking"
+                );
 
 
-# ============================================================
-# YOUTUBE
-# ============================================================
-
-@app.route("/youtube", methods=["POST"])
-def youtube():
-
-    try:
-
-        data = (
-            request.get_json(silent=True)
-            or {}
-        )
-
-        query = str(
-            data.get("query", "")
-        ).strip()
+                currentAudio =
+                    null;
+            };
 
 
-        if not query:
-
-            return jsonify({
-                "success": False,
-                "error":
-                    "No YouTube query provided."
-            }), 400
+        await currentAudio.play();
 
 
-        options = {
+    } catch (error) {
 
-            "quiet":
-                True,
+        if (
+            error.name ===
+            "AbortError"
+        ) {
 
-            "no_warnings":
-                True,
-
-            "skip_download":
-                True,
-
-            "extract_flat":
-                True,
-
-            "noplaylist":
-                True
+            return;
         }
 
 
-        with yt_dlp.YoutubeDL(
-            options
-        ) as ydl:
+        console.error(
+            "TTS ERROR:",
+            error
+        );
 
-            info = ydl.extract_info(
-                "ytsearch1:" + query,
-                download=False
+
+        ttsSpeaking =
+            false;
+
+
+        orb.classList.remove(
+            "speaking"
+        );
+
+
+        /*
+            Browser fallback.
+            Still does NOT start microphone.
+        */
+
+        if (
+            "speechSynthesis"
+            in window
+        ) {
+
+            try {
+
+                const speech =
+                    new SpeechSynthesisUtterance(
+                        cleanText
+                    );
+
+
+                speech.lang =
+                    "en-IN";
+
+
+                speech.rate =
+                    selectedLanguage ===
+                    "hinglish"
+                        ? 0.9
+                        : 0.95;
+
+
+                speech.onstart =
+                    function() {
+
+                        ttsSpeaking =
+                            true;
+
+
+                        orb.classList.add(
+                            "speaking"
+                        );
+                    };
+
+
+                speech.onend =
+                    function() {
+
+                        ttsSpeaking =
+                            false;
+
+
+                        orb.classList.remove(
+                            "speaking"
+                        );
+                    };
+
+
+                speech.onerror =
+                    function() {
+
+                        ttsSpeaking =
+                            false;
+
+
+                        orb.classList.remove(
+                            "speaking"
+                        );
+                    };
+
+
+                speechSynthesis.cancel();
+
+
+                speechSynthesis.speak(
+                    speech
+                );
+
+            } catch (fallbackError) {
+
+                console.error(
+                    "BROWSER TTS ERROR:",
+                    fallbackError
+                );
+            }
+        }
+    }
+}
+
+
+// ============================================================
+// SPEECH RECOGNITION SETUP
+//
+// NOTE:
+// recognition is CREATED here,
+// but NEVER STARTED here.
+// ============================================================
+
+function initializeRecognition() {
+
+    if (
+        recognition
+    ) {
+
+        return;
+    }
+
+
+    const SpeechRecognition =
+        window.SpeechRecognition
+        ||
+        window.webkitSpeechRecognition;
+
+
+    if (
+        !SpeechRecognition
+    ) {
+
+        recognitionSupported =
+            false;
+
+        return;
+    }
+
+
+    recognitionSupported =
+        true;
+
+
+    recognition =
+        new SpeechRecognition();
+
+
+    /*
+        IMPORTANT:
+        One user command at a time.
+    */
+
+    recognition.continuous =
+        false;
+
+
+    recognition.interimResults =
+        true;
+
+
+    recognition.lang =
+        "en-IN";
+
+
+    recognition.onstart =
+        function() {
+
+            /*
+                If somehow recognition starts while
+                JARVIS is speaking, immediately kill it.
+            */
+
+            if (
+                ttsSpeaking
+                ||
+                !userStartedListening
+            ) {
+
+                stopRecognition();
+
+                return;
+            }
+
+
+            isListening =
+                true;
+
+
+            recognitionMode =
+                "manual";
+
+
+            orb.classList.add(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "⏹️";
+        };
+
+
+    recognition.onresult =
+        function(event) {
+
+            /*
+                HARD SAFETY:
+                Never process microphone text while JARVIS
+                is speaking.
+
+                This prevents JARVIS from answering itself.
+            */
+
+            if (
+                ttsSpeaking
+                ||
+                !userStartedListening
+            ) {
+
+                return;
+            }
+
+
+            let finalText =
+                "";
+
+
+            let interimText =
+                "";
+
+
+            for (
+                let i =
+                    event.resultIndex;
+
+                i <
+                event.results.length;
+
+                i++
+            ) {
+
+                const transcript =
+                    event.results[i][0]
+                        .transcript
+                        .trim();
+
+
+                if (
+                    event.results[i]
+                        .isFinal
+                ) {
+
+                    finalText +=
+                        (
+                            finalText
+                                ? " "
+                                : ""
+                        )
+                        +
+                        transcript;
+
+                } else {
+
+                    interimText +=
+                        (
+                            interimText
+                                ? " "
+                                : ""
+                        )
+                        +
+                        transcript;
+                }
+            }
+
+
+            if (
+                interimText
+            ) {
+
+                userInput.value =
+                    interimText;
+            }
+
+
+            if (
+                finalText
+            ) {
+
+                /*
+                    Stop recognition BEFORE sending the
+                    message and before TTS starts.
+                */
+
+                userStartedListening =
+                    false;
+
+
+                recognitionMode =
+                    "idle";
+
+
+                try {
+
+                    recognition.stop();
+
+                } catch (e) {
+                }
+
+
+                isListening =
+                    false;
+
+
+                orb.classList.remove(
+                    "listening"
+                );
+
+
+                micButton.textContent =
+                    "🎤";
+
+
+                userInput.value =
+                    finalText;
+
+
+                setTimeout(
+                    function() {
+
+                        /*
+                            Final safety:
+                            don't speak while recognition
+                            is still active.
+                        */
+
+                        if (
+                            !isListening
+                            &&
+                            !userStartedListening
+                        ) {
+
+                            sendMessage();
+                        }
+
+                    },
+                    150
+                );
+            }
+        };
+
+
+    recognition.onend =
+        function() {
+
+            isListening =
+                false;
+
+
+            recognitionMode =
+                "idle";
+
+
+            orb.classList.remove(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "🎤";
+
+            /*
+                IMPORTANT:
+                NO automatic restart.
+            */
+        };
+
+
+    recognition.onerror =
+        function(event) {
+
+            console.log(
+                "Speech recognition:",
+                event.error
+            );
+
+
+            isListening =
+                false;
+
+
+            userStartedListening =
+                false;
+
+
+            recognitionMode =
+                "idle";
+
+
+            orb.classList.remove(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "🎤";
+
+
+            /*
+                IMPORTANT:
+                NO automatic restart.
+            */
+        };
+}
+
+
+// ============================================================
+// MANUAL MICROPHONE
+//
+// THIS IS THE ONLY FUNCTION THAT STARTS THE MIC.
+// ============================================================
+
+function manualMicToggle() {
+
+    /*
+        If currently speaking:
+        clicking mic means:
+        STOP JARVIS + START USER LISTENING.
+    */
+
+    if (
+        ttsSpeaking
+    ) {
+
+        stopTTS();
+
+        /*
+            Give the audio element a tiny moment
+            to completely stop before opening mic.
+        */
+
+        setTimeout(
+            startMicrophone,
+            80
+        );
+
+        return;
+    }
+
+
+    /*
+        If microphone is already on:
+        stop it.
+    */
+
+    if (
+        isListening
+        ||
+        userStartedListening
+    ) {
+
+        stopRecognition();
+
+        return;
+    }
+
+
+    startMicrophone();
+}
+
+
+// ============================================================
+// START MICROPHONE
+// ============================================================
+
+function startMicrophone() {
+
+    /*
+        Never start mic while TTS is active.
+    */
+
+    if (
+        ttsSpeaking
+    ) {
+
+        return;
+    }
+
+
+    if (
+        !recognition
+    ) {
+
+        initializeRecognition();
+    }
+
+
+    if (
+        !recognitionSupported
+        ||
+        !recognition
+    ) {
+
+        addMessage(
+            "jarvis",
+            "Voice input is not supported in this browser. Chrome ya Edge use karo."
+        );
+
+        return;
+    }
+
+
+    /*
+        Explicit user action happened.
+    */
+
+    userStartedListening =
+        true;
+
+
+    recognitionMode =
+        "manual";
+
+
+    try {
+
+        recognition.lang =
+            "en-IN";
+
+
+        recognition.continuous =
+            false;
+
+
+        recognition.interimResults =
+            true;
+
+
+        recognition.start();
+
+    } catch (error) {
+
+        console.log(
+            "Microphone start error:",
+            error
+        );
+    }
+}
+
+
+// ============================================================
+// MUSIC
+// ============================================================
+
+function isMusicCommand(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const actions = [
+
+        "play",
+        "bajao",
+        "baja do",
+        "chalao",
+        "chala do",
+        "sunao",
+        "suna do"
+    ];
+
+
+    const musicWords = [
+
+        "song",
+        "music",
+        "gaana",
+        "gana",
+        "gaane",
+        "track"
+    ];
+
+
+    const hasAction =
+        actions.some(
+            x =>
+                t.includes(
+                    x
+                )
+        );
+
+
+    const hasMusic =
+        musicWords.some(
+            x =>
+                t.includes(
+                    x
+                )
+        );
+
+
+    return (
+        hasAction
+        &&
+        (
+            hasMusic
+            ||
+            t.includes(
+                "youtube"
             )
-
-
-        entries = info.get(
-            "entries",
-            []
-        )
-
-
-        if not entries:
-
-            search_url = (
-                "https://www.youtube.com/results"
-                "?search_query="
-                + quote(query)
+            ||
+            t.startsWith(
+                "play "
             )
-
-            return jsonify({
-                "success": True,
-                "video_id": None,
-                "title": query,
-                "url": search_url
-            })
-
-
-        entry = entries[0]
-
-        video_id = entry.get(
-            "id"
         )
+    );
+}
 
-        title = (
-            entry.get("title")
-            or query
+
+function extractMusicQuery(
+    text
+) {
+
+    let query =
+        text.toLowerCase();
+
+
+    const patterns = [
+
+        /\bplay\b/gi,
+        /\bplease\b/gi,
+        /\bopen\b/gi,
+        /\bwatch\b/gi,
+        /\blisten\s+to\b/gi,
+        /\blisten\b/gi,
+
+        /\bon\s+youtube\b/gi,
+        /\byoutube\b/gi,
+        /\byou\s+tube\b/gi,
+
+        /\b(song|music|track)\b/gi,
+
+        /\b(gaana|gana|gaane)\b/gi,
+
+        /\b(bajao|baja do)\b/gi,
+
+        /\b(chalao|chala do)\b/gi,
+
+        /\b(sunao|suna do)\b/gi,
+
+        /\b(par|pe)\b/gi
+    ];
+
+
+    for (
+        const pattern of patterns
+    ) {
+
+        query =
+            query.replace(
+                pattern,
+                " "
+            );
+    }
+
+
+    return query
+        .replace(
+            /\s+/g,
+            " "
         )
+        .trim()
+        ||
+        "music";
+}
 
 
-        if video_id:
+// ============================================================
+// PLAY YOUTUBE
+// ============================================================
 
-            video_url = (
-                "https://www.youtube.com/watch?v="
-                + str(video_id)
-            )
+async function playMusic(
+    originalText
+) {
 
-            return jsonify({
-                "success": True,
-                "video_id":
-                    video_id,
-                "title":
-                    title,
-                "url":
-                    video_url
-            })
+    stopTTS();
+
+    stopRecognition();
 
 
-        search_url = (
-            "https://www.youtube.com/results"
-            "?search_query="
-            + quote(query)
+    const query =
+        extractMusicQuery(
+            originalText
+        );
+
+
+    addThinking();
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/youtube",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                    body:
+                        JSON.stringify({
+                            query:
+                                query
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        removeThinking();
+
+
+        if (
+            !response.ok
+            ||
+            !data.success
+        ) {
+
+            throw new Error(
+                data.error
+                ||
+                "YouTube search failed."
+            );
+        }
+
+
+        if (
+            data.video_id
+        ) {
+
+            youtubeArea.style.display =
+                "block";
+
+
+            youtubePlayer.src =
+                "https://www.youtube.com/embed/"
+                +
+                encodeURIComponent(
+                    data.video_id
+                )
+                +
+                "?autoplay=1&playsinline=1&rel=0";
+
+
+            const message =
+                selectedLanguage ===
+                "hinglish"
+
+                    ?
+
+                `Theek hai, ${data.title} YouTube par play kar raha hoon.`
+
+                    :
+
+                `Okay, playing ${data.title} on YouTube.`;
+
+
+            addMessage(
+                "jarvis",
+                message
+            );
+
+
+            /*
+                Speak the confirmation.
+                Mic stays OFF.
+            */
+
+            speakText(
+                message
+            );
+
+
+        } else {
+
+            const searchUrl =
+                data.url;
+
+
+            window.open(
+                searchUrl,
+                "_blank"
+            );
+
+
+            const message =
+                selectedLanguage ===
+                "hinglish"
+
+                    ?
+
+                `YouTube par ${query} search kar raha hoon.`
+
+                    :
+
+                `Searching YouTube for ${query}.`;
+
+
+            addMessage(
+                "jarvis",
+                message
+            );
+
+
+            speakText(
+                message
+            );
+        }
+
+
+    } catch (error) {
+
+        removeThinking();
+
+
+        const message =
+            selectedLanguage ===
+            "hinglish"
+
+                ?
+
+            "YouTube par song play nahi ho paaya."
+
+                :
+
+            "I could not play that song on YouTube.";
+
+
+        addMessage(
+            "jarvis",
+            message
+        );
+    }
+}
+
+
+// ============================================================
+// SEND MESSAGE
+// ============================================================
+
+async function sendMessage() {
+
+    /*
+        ABSOLUTE SAFETY:
+        Never send a message while microphone is running.
+    */
+
+    if (
+        isListening
+        ||
+        userStartedListening
+    ) {
+
+        stopRecognition();
+    }
+
+
+    const prompt =
+        userInput.value.trim();
+
+
+    if (
+        !prompt
+    ) {
+
+        return;
+    }
+
+
+    userInput.value =
+        "";
+
+
+    addMessage(
+        "user",
+        prompt
+    );
+
+
+    /*
+        MUSIC
+    */
+
+    if (
+        isMusicCommand(
+            prompt
         )
+    ) {
 
-        return jsonify({
-            "success": True,
-            "video_id": None,
-            "title": query,
-            "url": search_url
-        })
+        await playMusic(
+            prompt
+        );
+
+        return;
+    }
 
 
-    except Exception as exc:
+    /*
+        TIME
+    */
 
-        print(
-            "YOUTUBE ERROR:",
-            repr(exc)
+    if (
+        isTimeQuestion(
+            prompt
         )
+    ) {
+
+        const answer =
+            getTimeAnswer();
 
 
-        search_url = (
-            "https://www.youtube.com/results"
-            "?search_query="
-            + quote(query)
+        addMessage(
+            "jarvis",
+            answer
+        );
+
+
+        speakText(
+            answer
+        );
+
+
+        return;
+    }
+
+
+    /*
+        DATE
+    */
+
+    if (
+        isDateQuestion(
+            prompt
         )
+    ) {
+
+        const answer =
+            getDateAnswer();
 
 
-        return jsonify({
-            "success": True,
-            "video_id": None,
-            "title": query,
-            "url": search_url
-        })
+        addMessage(
+            "jarvis",
+            answer
+        );
 
 
-# ============================================================
-# RUN
-# ============================================================
+        speakText(
+            answer
+        );
 
-if __name__ == "__main__":
 
-    app.run(
-        host="0.0.0.0",
-        port=PORT,
-        debug=False
-    )
+        return;
+    }
+
+
+    /*
+        AI
+    */
+
+    addThinking();
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/ask-ai",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                    body:
+                        JSON.stringify({
+
+                            prompt:
+                                prompt,
+
+                            language:
+                                selectedLanguage
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        removeThinking();
+
+
+        if (
+            !response.ok
+            ||
+            !data.success
+        ) {
+
+            throw new Error(
+                data.error
+                ||
+                "Server error."
+            );
+        }
+
+
+        addMessage(
+            "jarvis",
+            data.answer
+        );
+
+
+        /*
+            Before TTS starts, recognition is stopped.
+            TTS itself NEVER starts recognition.
+        */
+
+        speakText(
+            data.answer
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "AI ERROR:",
+            error
+        );
+
+
+        removeThinking();
+
+
+        const message =
+            selectedLanguage ===
+            "hinglish"
+
+                ?
+
+            "Sorry yaar, abhi server ya connection mein problem aa rahi hai."
+
+                :
+
+            "Sorry, there is a server or connection problem.";
+
+
+        addMessage(
+            "jarvis",
+            message
+        );
+
+
+        speakText(
+            message
+        );
+    }
+}
+
+
+// ============================================================
+// ENTER
+// ============================================================
+
+function handleKey(
+    event
+) {
+
+    if (
+        event.key === "Enter"
+    ) {
+
+        event.preventDefault();
+
+        sendMessage();
+    }
+}
+
+</script>
+
+
+</body>
+
+</html>
