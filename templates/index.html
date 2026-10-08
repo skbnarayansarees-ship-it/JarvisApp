@@ -170,7 +170,138 @@
                         appendMessage("System", "Music sync triggered on all devices.");
                     }
                 });
-        }, 2000); // Check every 2 seconds
+        }, 2000);
+        <script>
+    const statusEl = document.getElementById('status');
+    const logo = document.getElementById('logo');
+    const conversation = document.getElementById('conversation');
+    const ytPlayer = document.getElementById('yt-player');
+    const ytContainer = document.getElementById('yt-player-container');
+
+    let lastTimestamp = 0;
+
+    function speak(text) {
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        const voices = synth.getVoices();
+        const preferredVoice = voices.find(v => v.lang.includes('hi-IN') || v.lang.includes('en-IN'));
+        if(preferredVoice) utterance.voice = preferredVoice;
+        synth.speak(utterance);
+    }
+
+    function appendMessage(sender, text) {
+        conversation.innerHTML += `<div class="${sender === 'You' ? 'user-text' : 'ai-text'}">${sender}: ${text}</div>`;
+        document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+    }
+
+    function sendCommand(text) {
+        appendMessage("You", text);
+        statusEl.innerText = "Processing...";
+        logo.classList.remove('listening');
+
+        fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendMessage("Jarvis", data.response);
+            speak(data.response);
+            statusEl.innerText = "Listening for 'Jarvis'...";
+        })
+        .catch(error => {
+            statusEl.innerText = "Connection Error.";
+        });
+    }
+
+    // Web Speech API with Debugging & Error Handling
+    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (window.SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = 'en-IN';
+
+        let isListening = false;
+
+        function startListening() {
+            try {
+                recognition.start();
+            } catch(e) {
+                // Already started
+            }
+        }
+
+        recognition.onstart = () => {
+            isListening = true;
+            statusEl.innerText = "Mic Active! Say 'Jarvis'...";
+            console.log("Speech recognition started");
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+            console.log("Heard:", transcript);
+
+            if (transcript.includes('jarvis')) {
+                statusEl.innerText = "Jarvis Triggered! Processing command...";
+                logo.classList.add('listening');
+
+                const commandPart = transcript.substring(transcript.indexOf('jarvis') + 6).trim();
+                if (commandPart.length > 2) {
+                    sendCommand(commandPart);
+                }
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Mic Error:", event.error);
+            if (event.error === 'not-allowed') {
+                statusEl.innerText = "Error: Microphone permission blocked by system/browser.";
+            } else if (event.error === 'network') {
+                statusEl.innerText = "Error: Internet/Network issue with Chrome Speech Service.";
+            } else {
+                statusEl.innerText = "Mic Error: " + event.error;
+            }
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            console.log("Mic disconnected, restarting...");
+            // Auto restart
+            setTimeout(() => {
+                startListening();
+            }, 1000);
+        };
+
+        // User click to activate mic initially (Chrome Requirement)
+        document.addEventListener('click', () => {
+            startListening();
+        }, { once: true });
+
+        // Auto start on page load
+        startListening();
+
+    } else {
+        statusEl.innerText = "Browser does not support Speech Recognition. Use Chrome or Edge.";
+    }
+
+    // Global Device Sync
+    setInterval(() => {
+        fetch('/sync')
+            .then(r => r.json())
+            .then(data => {
+                if (data.action === "play_youtube" && data.timestamp > lastTimestamp) {
+                    lastTimestamp = data.timestamp;
+                    ytContainer.style.display = "block";
+                    ytPlayer.src = `https://www.youtube.com/embed/${data.payload}?autoplay=1`;
+                    appendMessage("System", "Music playing on all synced devices.");
+                }
+            });
+    }, 2000);
+</script>// Check every 2 seconds
     </script>
 </body>
 </html>
