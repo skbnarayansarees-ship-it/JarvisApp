@@ -4,6 +4,8 @@ import urllib.parse
 import re
 import time
 import os
+import requests
+import xml.etree.ElementTree as ET
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -11,37 +13,51 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# API Key setup (Use .env file for safety)
+# API Key setup
 api_key = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Yeh variable sab devices ko sync rakhega
 global_state = {
     "action": "none",
     "payload": "",
     "timestamp": time.time()
 }
 
-# Jarvis ka Dimag (System Prompt)
 system_instruction = """
 You are Jarvis, an advanced, highly empathetic, and human-like AI assistant. 
+- You have real-time internet access provided via prompts. Always act like you know the latest current affairs.
 - If the user speaks in English, reply in English. 
-- If the user speaks in Hinglish (Hindi written in English) or Hindi, reply completely in Hinglish.
-- Act like a caring friend, NOT a robot.
-- If they ask "kyaa kr rhe ho?", reply casually like: "Bas aapka hi intezaar tha, bataiye kya chal raha hai?"
-- If they say "mujhe accha nhin lg rhaa" or sound sad, show deep empathy, console them, and ask what's bothering them. Offer good human-like advice.
-Keep your responses short, natural, and conversational.
+- If the user speaks in Hinglish (Hindi in English script), reply completely in Hinglish.
+- Act like a caring friend. If they say "mujhe accha nhin lg rhaa" or sound sad, show deep empathy, console them, and ask what's bothering them.
+- Keep your responses short, natural, and conversational.
 """
 
 def search_youtube(query):
-    """Bina yt-dlp ke direct fast search for instant play"""
+    """Direct fast search for instant YouTube play"""
     query_string = urllib.parse.urlencode({"search_query": query})
     html_content = urllib.request.urlopen("https://www.youtube.com/results?" + query_string)
     search_results = re.findall(r'watch\?v=(\S{11})', html_content.read().decode())
     if search_results:
         return search_results[0]
     return None
+
+def get_latest_news(query):
+    """Google News RSS se live real-time information nikalne ke liye"""
+    try:
+        url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
+        resp = requests.get(url)
+        root = ET.fromstring(resp.content)
+        news_items = []
+        # Top 3 latest news headlines uthayenge
+        for item in root.findall('.//item')[:3]:
+            title = item.find('title').text
+            news_items.append(title)
+        if news_items:
+            return "Live Web Info: " + " | ".join(news_items)
+    except Exception as e:
+        pass
+    return ""
 
 @app.route('/')
 def index():
@@ -52,14 +68,12 @@ def chat():
     global global_state
     user_msg = request.json.get('message', '').lower()
     
-    # 1. Check if user wants to play a song
+    # 1. YouTube Play Command
     if 'play' in user_msg:
-        # Extract song name
         song_name = user_msg.replace('jarvis', '').replace('play', '').strip()
         video_id = search_youtube(song_name)
         
         if video_id:
-            # Update global state so ALL devices play it
             global_state = {
                 "action": "play_youtube",
                 "payload": video_id,
@@ -69,19 +83,29 @@ def chat():
         else:
             return jsonify({"response": "Sorry boss, gaana nahi mila."})
 
-    # 2. Normal Chat via Gemini with Human Empathy
+    # 2. Check if user is asking for News or Latest Info
+    real_time_context = ""
+    trigger_words = ['news', 'latest', 'aaj', 'kal', 'kaun', 'match', 'score', 'kya chal raha hai']
+    if any(word in user_msg for word in trigger_words):
+        real_time_context = get_latest_news(user_msg.replace('jarvis', '').strip())
+
+    # 3. Add context and ask Gemini
+    if real_time_context:
+        full_prompt = f"Real-Time Data: {real_time_context}\n\nUser: {user_msg}"
+    else:
+        full_prompt = "User: " + user_msg
+
     try:
         chat_session = model.start_chat(history=[])
-        response = chat_session.send_message(system_instruction + "\nUser: " + user_msg)
+        response = chat_session.send_message(system_instruction + "\n" + full_prompt)
         ai_reply = response.text.strip()
     except Exception as e:
-        ai_reply = "Network mein kuch dikkat hai boss, baad mein try karein."
+        ai_reply = "Network mein kuch thodi dikkat hai boss."
 
     return jsonify({"response": ai_reply, "action": "chat"})
 
 @app.route('/sync', methods=['GET'])
 def sync_devices():
-    """Sabhi connected devices har 2 second mein yahan se check karenge ki kya play karna hai"""
     global global_state
     return jsonify(global_state)
 
