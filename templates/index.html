@@ -1,1751 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <meta name="theme-color"
-          content="#070b12">
-
-    <link
-        rel="icon"
-        type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=777"
-    >
-
-    <title>JARVIS AI Assistant</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. AI</title>
     <style>
-
-        * {
+        body {
+            background-color: #0d1117;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
             box-sizing: border-box;
         }
-
-        html,
-        body {
-            margin: 0;
-            min-height: 100%;
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
             width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
         }
-
-        body {
-            min-height: 100vh;
-            font-family: Arial, sans-serif;
-
-            background:
-                radial-gradient(
-                    circle at top,
-                    #18243b 0%,
-                    #070b12 48%,
-                    #030509 100%
-                );
-
-            color: white;
-
-            display: flex;
-            justify-content: center;
-        }
-
-        .app {
-            width: min(1000px, 95vw);
-            min-height: 100vh;
-
-            display: flex;
-            flex-direction: column;
-
-            padding: 18px;
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-
-            padding-bottom: 18px;
-        }
-
-        .brand-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .top-logo {
-            width: 58px;
-            height: 58px;
-
-            border-radius: 12px;
-            object-fit: cover;
-
-            background: white;
-        }
-
-        .brand {
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: 3px;
-        }
-
-        .status {
-            text-align: right;
-            font-size: 13px;
-            opacity: .8;
-        }
-
-        #istClock {
-            margin-top: 5px;
-            font-weight: 700;
-        }
-
-        #micStatus {
-            margin-top: 4px;
-            font-size: 11px;
-        }
-
-        #languageScreen {
+        .header img { width: 50px; border-radius: 10px; }
+        .chat-container {
             flex: 1;
-
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .language-card {
-            width: min(470px, 94vw);
-
-            padding: 35px;
-
-            border-radius: 26px;
-
-            background:
-                rgba(255,255,255,.06);
-
-            border:
-                1px solid
-                rgba(255,255,255,.10);
-
-            text-align: center;
-        }
-
-        .language-card h1 {
-            margin: 0 0 10px;
-            font-size: 34px;
-        }
-
-        .language-card p {
-            margin: 0 0 25px;
-            opacity: .7;
-        }
-
-        .lang-button {
             width: 100%;
-            margin-top: 12px;
-
-            padding: 17px;
-
-            border: 0;
-            border-radius: 16px;
-
-            background:
-                rgba(255,255,255,.10);
-
-            color: white;
-
-            font-size: 17px;
-            font-weight: 700;
-
-            cursor: pointer;
-        }
-
-        .lang-button:hover {
-            background:
-                rgba(255,255,255,.18);
-        }
-
-        #chatScreen {
-            display: none;
-            flex: 1;
-            flex-direction: column;
-        }
-
-        #chatBox {
-            flex: 1;
+            max-width: 800px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
             padding-bottom: 20px;
         }
-
-        .message-row {
-            display: flex;
-            margin: 12px 0;
-        }
-
-        .message-row.user {
-            justify-content: flex-end;
-        }
-
-        .message-row.jarvis {
-            justify-content: flex-start;
-        }
-
         .message {
-            max-width: min(760px, 88%);
-            padding: 14px 17px;
-
-            border-radius: 18px;
-
-            white-space: pre-wrap;
-            line-height: 1.55;
+            padding: 12px 18px;
+            border-radius: 8px;
+            max-width: 70%;
+            line-height: 1.4;
         }
-
-        .message.user {
-            background: #2667ff;
+        .bot-msg {
+            background-color: #1f2937;
+            align-self: flex-start;
         }
-
-        .message.jarvis {
-            background:
-                rgba(255,255,255,.08);
-
-            border:
-                1px solid
-                rgba(255,255,255,.08);
+        .user-msg {
+            background-color: #3b82f6;
+            align-self: flex-end;
         }
-
-        .thinking {
-            opacity: .6;
-            font-style: italic;
-        }
-
-        .orb-area {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-            padding: 12px 0 18px;
-        }
-
         .orb {
-            width: 100px;
-            height: 100px;
-
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, #3b82f6, #1e3a8a);
             border-radius: 50%;
-
-            background:
-                radial-gradient(
-                    circle at 30% 30%,
-                    #ffffff,
-                    #70a7ff 18%,
-                    #2465ff 50%,
-                    #10204a 72%,
-                    #050912 100%
-                );
-
-            box-shadow:
-                0 0 25px
-                rgba(80,140,255,.8),
-
-                0 0 75px
-                rgba(50,100,255,.4);
-
-            cursor: pointer;
+            box-shadow: 0 0 40px #3b82f6;
+            margin: 20px auto;
+            transition: all 0.3s ease;
         }
-
         .orb.listening {
-            animation: pulse .65s infinite alternate;
+            box-shadow: 0 0 80px #10b981;
+            background: radial-gradient(circle, #10b981, #065f46);
         }
-
-        .orb.speaking {
-            box-shadow:
-                0 0 30px
-                rgba(90,160,255,.95),
-
-                0 0 100px
-                rgba(50,100,255,.65);
-        }
-
-        @keyframes pulse {
-            from {
-                transform: scale(1);
-            }
-
-            to {
-                transform: scale(1.12);
-            }
-        }
-
         .input-area {
             display: flex;
-            gap: 10px;
+            width: 100%;
+            max-width: 800px;
+            background-color: #1f2937;
+            border-radius: 25px;
+            padding: 5px 10px;
             align-items: center;
         }
-
-        #userInput {
-            flex: 1;
-
-            padding: 16px 18px;
-
-            border-radius: 16px;
-
-            border:
-                1px solid
-                rgba(255,255,255,.10);
-
-            background:
-                rgba(255,255,255,.06);
-
+        .mic-btn {
+            background: none;
+            border: none;
             color: white;
-
-            font-size: 16px;
-
-            outline: none;
-        }
-
-        #userInput::placeholder {
-            color:
-                rgba(255,255,255,.45);
-        }
-
-        button.mic,
-        button.send {
-            width: 54px;
-            height: 54px;
-
-            border: 0;
-            border-radius: 16px;
-
-            background:
-                rgba(255,255,255,.10);
-
-            color: white;
-
             font-size: 20px;
-
             cursor: pointer;
+            padding: 10px;
         }
-
-        .footer {
-            text-align: center;
-
-            padding: 10px 0 3px;
-
-            font-size: 12px;
-
-            opacity: .6;
+        .mic-btn:disabled { color: #6b7280; cursor: not-allowed; }
+        input[type="text"] {
+            flex: 1;
+            background: none;
+            border: none;
+            color: white;
+            padding: 10px;
+            outline: none;
+            font-size: 16px;
         }
-
-        @media (max-width: 650px) {
-
-            .brand {
-                font-size: 21px;
-            }
-
-            .top-logo {
-                width: 48px;
-                height: 48px;
-            }
-
-            .orb {
-                width: 86px;
-                height: 86px;
-            }
+        .send-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 10px;
         }
-
     </style>
-
 </head>
-
 <body>
 
-<div class="app">
-
-    <div class="topbar">
-
-        <div class="brand-area">
-
-            <img
-                class="top-logo"
-                src="{{ url_for('static', filename='logo.png') }}?v=777"
-                alt="JARVIS"
-            >
-
-            <div class="brand">
-                J.A.R.V.I.S.
-            </div>
-
-        </div>
-
-        <div class="status">
-
-            <div id="languageStatus">
-                Language not selected
-            </div>
-
-            <div id="istClock">
-                IST --:--:-- --
-            </div>
-
-            <div id="micStatus">
-                MIC OFF
-            </div>
-
-        </div>
-
+    <div class="header">
+        <!-- Yahan aap apna JARVIS logo URL daal sakte hain -->
+        <h2>J.A.R.V.I.S.</h2>
     </div>
 
-
-    <section id="languageScreen">
-
-        <div class="language-card">
-
-            <h1>Welcome to JARVIS</h1>
-
-            <p>
-                Select your conversation language
-            </p>
-
-            <button
-                class="lang-button"
-                onclick="selectLanguage('english')"
-            >
-                1 — English
-            </button>
-
-            <button
-                class="lang-button"
-                onclick="selectLanguage('hinglish')"
-            >
-                2 — Hinglish
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <section id="chatScreen">
-
-        <div id="chatBox"></div>
-
-
-        <div class="orb-area">
-
-            <div
-                id="orb"
-                class="orb"
-                onclick="micClick()"
-            ></div>
-
-        </div>
-
-
-        <div class="input-area">
-
-            <button
-                id="micButton"
-                class="mic"
-                onclick="micClick()"
-            >
-                🎤
-            </button>
-
-            <input
-                id="userInput"
-                placeholder="Type your message..."
-                autocomplete="off"
-                onkeydown="handleKey(event)"
-            >
-
-            <button
-                class="send"
-                onclick="sendTyped()"
-            >
-                ➤
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <div class="footer">
-        Developed by <b>Aryan</b>
+    <div class="chat-container" id="chat-box">
+        <div class="message bot-msg">Hello. I'm JARVIS. How can I help you?</div>
     </div>
 
-</div>
-
-
-<script>
-
-/* ============================================================
-   ONLY ONE SPEECH RECOGNITION SYSTEM
-============================================================ */
-
-let language = null;
-
-let currentRecognition = null;
-
-let recognitionId = 0;
-
-let micIsOn = false;
-
-let jarvisSpeaking = false;
-
-let currentAudio = null;
-
-let currentAudioUrl = null;
-
-let ttsController = null;
-
-
-/* ============================================================
-   ELEMENTS
-============================================================ */
-
-const languageScreen =
-    document.getElementById(
-        "languageScreen"
-    );
-
-const chatScreen =
-    document.getElementById(
-        "chatScreen"
-    );
-
-const chatBox =
-    document.getElementById(
-        "chatBox"
-    );
-
-const userInput =
-    document.getElementById(
-        "userInput"
-    );
-
-const orb =
-    document.getElementById(
-        "orb"
-    );
-
-const micButton =
-    document.getElementById(
-        "micButton"
-    );
-
-const micStatus =
-    document.getElementById(
-        "micStatus"
-    );
-
-const languageStatus =
-    document.getElementById(
-        "languageStatus"
-    );
-
-const istClock =
-    document.getElementById(
-        "istClock"
-    );
-
-
-/* ============================================================
-   MIC UI
-============================================================ */
-
-function micOff() {
-
-    micIsOn =
-        false;
-
-    micStatus.textContent =
-        "MIC OFF";
-
-    micButton.textContent =
-        "🎤";
-
-    orb.classList.remove(
-        "listening"
-    );
-}
-
-
-function micOn() {
-
-    micIsOn =
-        true;
-
-    micStatus.textContent =
-        "MIC ON";
-
-    micButton.textContent =
-        "⏹️";
-
-    orb.classList.add(
-        "listening"
-    );
-}
-
-
-/* ============================================================
-   IST CLOCK
-============================================================ */
-
-function updateClock() {
-
-    const now =
-        new Date(
-            Date.now() +
-            19800000
-        );
-
-    const hour =
-        now.getUTCHours();
-
-    const h =
-        hour % 12 || 12;
-
-    const ap =
-        hour < 12
-            ? "AM"
-            : "PM";
-
-    const pad =
-        value =>
-            String(value)
-                .padStart(2, "0");
-
-    istClock.textContent =
-        `IST ${pad(h)}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} ${ap}`;
-}
-
-
-updateClock();
-
-setInterval(
-    updateClock,
-    1000
-);
-
-
-/* ============================================================
-   LANGUAGE
-============================================================ */
-
-function selectLanguage(
-    selected
-) {
-
-    language =
-        selected;
-
-    languageScreen.style.display =
-        "none";
-
-    chatScreen.style.display =
-        "flex";
-
-    languageStatus.textContent =
-        selected === "hinglish"
-            ? "Hinglish selected"
-            : "English selected";
-
-    micOff();
-
-    addMessage(
-        "jarvis",
-        selected === "hinglish"
-            ?
-            "Haan bilkul. Main naturally Hinglish mein baat karunga. Batao kya poochna hai."
-            :
-            "Hello. I'm JARVIS. How can I help you?"
-    );
-}
-
-
-/* ============================================================
-   MESSAGES
-============================================================ */
-
-function addMessage(
-    type,
-    text
-) {
-
-    const row =
-        document.createElement(
-            "div"
-        );
-
-    row.className =
-        "message-row " +
-        type;
-
-    const bubble =
-        document.createElement(
-            "div"
-        );
-
-    bubble.className =
-        "message " +
-        type;
-
-    bubble.textContent =
-        text;
-
-    row.appendChild(
-        bubble
-    );
-
-    chatBox.appendChild(
-        row
-    );
-
-    chatBox.scrollTop =
-        chatBox.scrollHeight;
-}
-
-
-function thinkingOn() {
-
-    addMessage(
-        "jarvis",
-        language === "hinglish"
-            ? "Soch raha hoon..."
-            : "Thinking..."
-    );
-
-    const all =
-        document.querySelectorAll(
-            ".message.jarvis"
-        );
-
-    if (all.length) {
-        all[
-            all.length - 1
-        ].classList.add(
-            "thinking"
-        );
-    }
-}
-
-
-function thinkingOff() {
-
-    const all =
-        document.querySelectorAll(
-            ".message.jarvis"
-        );
-
-    if (!all.length) {
-        return;
-    }
-
-    const last =
-        all[
-            all.length - 1
-        ];
-
-    if (
-        last.textContent ===
-        "Thinking..."
-        ||
-        last.textContent ===
-        "Soch raha hoon..."
-    ) {
-
-        last.parentElement.remove();
-    }
-}
-
-
-/* ============================================================
-   HARD STOP MICROPHONE
-============================================================ */
-
-function killMic() {
-
-    recognitionId++;
-
-
-    const r =
-        currentRecognition;
-
-
-    currentRecognition =
-        null;
-
-
-    micOff();
-
-
-    if (r) {
-
-        try {
-            r.abort();
-        } catch (e) {
+    <div class="orb" id="orb"></div>
+
+    <div class="input-area">
+        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">🎙️</button>
+        <input type="text" id="user-input" placeholder="Type your message..." onkeypress="handleEnter(event)">
+        <button class="send-btn" onclick="sendMessage()">▶</button>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById("chat-box");
+        const userInput = document.getElementById("user-input");
+        const orb = document.getElementById("orb");
+        const micBtn = document.getElementById("mic-btn");
+
+        let isSpeaking = false; // Track karne ke liye ki bot bol raha hai ya nahi
+        let recognition;
+
+        // Speech Recognition Setup (Mic)
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false; // Ek bar bolne ke baad khud band ho jayega
+            recognition.interimResults = false;
+            recognition.lang = 'en-IN'; // English India
+
+            recognition.onstart = function() {
+                orb.classList.add("listening");
+                userInput.placeholder = "Listening...";
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                sendMessage(); // Bolne ke baad automatically send kar dega
+            };
+
+            recognition.onerror = function(event) {
+                console.log("Mic error: ", event.error);
+                orb.classList.remove("listening");
+                userInput.placeholder = "Type your message...";
+            };
+
+            recognition.onend = function() {
+                orb.classList.remove("listening");
+                userInput.placeholder = "Type your message...";
+            };
+        } else {
+            alert("Speech recognition is not supported in this browser. Please use Chrome.");
+        }
+
+        function toggleMic() {
+            // Agar bot bol raha hai, toh mic on mat hone do
+            if (isSpeaking) {
+                console.log("Bot is speaking. Mic cannot be turned on right now.");
+                return; 
+            }
+            recognition.start();
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function addMessage(text, sender) {
+            const msgDiv = document.createElement("div");
+            msgDiv.classList.add("message");
+            msgDiv.classList.add(sender === "user" ? "user-msg" : "bot-msg");
+            msgDiv.innerText = text;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Stop mic immediately if it's still running when user hits send
+            if(recognition) recognition.stop(); 
+
+            addMessage(text, "user");
+            userInput.value = "";
 
             try {
-                r.stop();
-            } catch (ignored) {}
-        }
-    }
-}
-
-
-/* ============================================================
-   HARD STOP TTS
-============================================================ */
-
-function killTTS() {
-
-    jarvisSpeaking =
-        false;
-
-
-    if (ttsController) {
-
-        try {
-            ttsController.abort();
-        } catch (e) {}
-
-        ttsController =
-            null;
-    }
-
-
-    if (currentAudio) {
-
-        try {
-
-            currentAudio.pause();
-
-            currentAudio.currentTime =
-                0;
-
-            currentAudio.src =
-                "";
-
-        } catch (e) {}
-
-        currentAudio =
-            null;
-    }
-
-
-    if (currentAudioUrl) {
-
-        try {
-
-            URL.revokeObjectURL(
-                currentAudioUrl
-            );
-
-        } catch (e) {}
-
-        currentAudioUrl =
-            null;
-    }
-
-
-    if (
-        "speechSynthesis"
-        in window
-    ) {
-
-        try {
-            speechSynthesis.cancel();
-        } catch (e) {}
-    }
-
-
-    orb.classList.remove(
-        "speaking"
-    );
-}
-
-
-/* ============================================================
-   SPEAK
-============================================================ */
-
-async function speak(
-    text
-) {
-
-    /*
-       CRITICAL:
-
-       Kill microphone BEFORE doing ANYTHING else.
-    */
-
-    killMic();
-
-
-    jarvisSpeaking =
-        true;
-
-
-    orb.classList.add(
-        "speaking"
-    );
-
-
-    let clean =
-        String(
-            text || ""
-        )
-        .replace(
-            /[*_#>`~|]/g,
-            " "
-        )
-        .replace(
-            /["“”‘’]/g,
-            " "
-        )
-        .replace(
-            /\s+/g,
-            " "
-        )
-        .trim();
-
-
-    if (!clean) {
-
-        jarvisSpeaking =
-            false;
-
-        return;
-    }
-
-
-    try {
-
-        ttsController =
-            new AbortController();
-
-
-        const response =
-            await fetch(
-                "/speak",
-                {
-
-                    method:
-                        "POST",
-
-                    headers:
-                        {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                    body:
-                        JSON.stringify({
-                            text:
-                                clean,
-
-                            language:
-                                language
-                        }),
-
-                    signal:
-                        ttsController.signal
-                }
-            );
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                "TTS failed"
-            );
-        }
-
-
-        /*
-           KILL AGAIN before creating audio.
-        */
-
-        killMic();
-
-
-        const blob =
-            await response.blob();
-
-
-        currentAudioUrl =
-            URL.createObjectURL(
-                blob
-            );
-
-
-        currentAudio =
-            new Audio(
-                currentAudioUrl
-            );
-
-
-        currentAudio.onplay =
-            function() {
-
-                /*
-                   ABSOLUTELY NO MIC.
-                */
-
-                jarvisSpeaking =
-                    true;
-
-                killMic();
-
-                orb.classList.add(
-                    "speaking"
-                );
-            };
-
-
-        currentAudio.onended =
-            function() {
-
-                jarvisSpeaking =
-                    false;
-
-                killMic();
-
-                orb.classList.remove(
-                    "speaking"
-                );
-
-
-                if (
-                    currentAudioUrl
-                ) {
-
-                    URL.revokeObjectURL(
-                        currentAudioUrl
-                    );
-
-                    currentAudioUrl =
-                        null;
+                // Backend API call (Flask default port 5000 hota hai)
+                const response = await fetch("http://127.0.0.1:5000/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Server or connection problem");
                 }
 
+                const data = await response.json();
+                addMessage(data.response, "bot");
+                speakText(data.response);
 
-                currentAudio =
-                    null;
-            };
-
-
-        currentAudio.onerror =
-            function() {
-
-                jarvisSpeaking =
-                    false;
-
-                killMic();
-
-                orb.classList.remove(
-                    "speaking"
-                );
-            };
-
-
-        /*
-           Final kill immediately before playback.
-        */
-
-        killMic();
-
-
-        await currentAudio.play();
-
-
-    } catch (error) {
-
-        console.error(
-            "TTS error:",
-            error
-        );
-
-
-        jarvisSpeaking =
-            false;
-
-        killMic();
-
-        orb.classList.remove(
-            "speaking"
-        );
-    }
-}
-
-
-/* ============================================================
-   START A NEW MICROPHONE SESSION
-============================================================ */
-
-function startMic() {
-
-    /*
-       NEVER start while JARVIS is speaking.
-    */
-
-    if (
-        jarvisSpeaking
-    ) {
-        return;
-    }
-
-
-    /*
-       Destroy any previous session.
-    */
-
-    killMic();
-
-
-    const SpeechRecognition =
-        window.SpeechRecognition
-        ||
-        window.webkitSpeechRecognition;
-
-
-    if (
-        !SpeechRecognition
-    ) {
-
-        addMessage(
-            "jarvis",
-            "Voice input is not supported in this browser. Chrome ya Edge use karo."
-        );
-
-        return;
-    }
-
-
-    const myId =
-        ++recognitionId;
-
-
-    const r =
-        new SpeechRecognition();
-
-
-    currentRecognition =
-        r;
-
-
-    let answer =
-        "";
-
-
-    let finished =
-        false;
-
-
-    r.continuous =
-        false;
-
-
-    /*
-       IMPORTANT:
-       NO partial/interim text.
-    */
-
-    r.interimResults =
-        false;
-
-
-    r.lang =
-        "en-IN";
-
-
-    r.onstart =
-        function() {
-
-            if (
-                myId !== recognitionId
-                ||
-                jarvisSpeaking
-            ) {
-
-                try {
-                    r.abort();
-                } catch (e) {}
-
-                return;
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                addMessage("Sorry, there is a server or connection problem.", "bot");
+                speakText("Sorry, there is a server or connection problem.");
             }
-
-
-            micOn();
-        };
-
-
-    r.onresult =
-        function(event) {
-
-            if (
-                myId !== recognitionId
-                ||
-                jarvisSpeaking
-            ) {
-
-                return;
-            }
-
-
-            answer =
-                event
-                    .results[0][0]
-                    .transcript
-                    .trim();
-
-
-            if (
-                !answer
-            ) {
-
-                return;
-            }
-
-
-            finished =
-                true;
-
-
-            /*
-               THE MOMENT QUESTION IS RECEIVED:
-               KILL MICROPHONE.
-            */
-
-            userInput.value =
-                answer;
-
-
-            killMic();
-        };
-
-
-    r.onspeechend =
-        function() {
-
-            try {
-                r.stop();
-            } catch (e) {}
-        };
-
-
-    r.onend =
-        function() {
-
-            if (
-                myId !== recognitionId
-            ) {
-
-                return;
-            }
-
-
-            currentRecognition =
-                null;
-
-
-            micOff();
-
-
-            if (
-                finished
-                &&
-                answer
-                &&
-                !jarvisSpeaking
-            ) {
-
-                /*
-                   MIC IS COMPLETELY OFF.
-
-                   ONLY NOW send question.
-                */
-
-                setTimeout(
-                    function() {
-
-                        if (
-                            !currentRecognition
-                            &&
-                            !micIsOn
-                            &&
-                            !jarvisSpeaking
-                        ) {
-
-                            sendMessage(
-                                answer
-                            );
-                        }
-
-                    },
-                    100
-                );
-            }
-        };
-
-
-    r.onerror =
-        function(error) {
-
-            console.log(
-                "Recognition:",
-                error.error
-            );
-
-
-            if (
-                myId === recognitionId
-            ) {
-
-                currentRecognition =
-                    null;
-
-                micOff();
-            }
-        };
-
-
-    try {
-
-        r.start();
-
-    } catch (error) {
-
-        console.error(
-            "Mic start:",
-            error
-        );
-
-
-        currentRecognition =
-            null;
-
-        micOff();
-    }
-}
-
-
-/* ============================================================
-   MICROPHONE BUTTON
-
-   THIS IS THE ONLY PLACE THAT STARTS THE MIC.
-============================================================ */
-
-function micClick() {
-
-    /*
-       If JARVIS speaks:
-       a manual click is required to interrupt it.
-    */
-
-    if (
-        jarvisSpeaking
-    ) {
-
-        killTTS();
-
-
-        setTimeout(
-            startMic,
-            150
-        );
-
-
-        return;
-    }
-
-
-    /*
-       If mic is active, clicking again kills it.
-    */
-
-    if (
-        currentRecognition
-        ||
-        micIsOn
-    ) {
-
-        killMic();
-
-        return;
-    }
-
-
-    startMic();
-}
-
-
-/* ============================================================
-   TIME / DATE
-============================================================ */
-
-function isTimeQuestion(text) {
-
-    const t =
-        text
-            .toLowerCase()
-            .trim();
-
-    return [
-
-        "what time is it",
-        "what's the time",
-        "current time",
-        "time kya hai",
-        "time batao",
-        "abhi kya time hai",
-        "abhi kitne baje hain",
-        "india time"
-
-    ].some(
-        x =>
-            t.includes(x)
-    );
-}
-
-
-function isDateQuestion(text) {
-
-    const t =
-        text
-            .toLowerCase()
-            .trim();
-
-    return [
-
-        "what date is it",
-        "today's date",
-        "today date",
-        "current date",
-        "aaj ki date kya hai",
-        "aaj kya date hai",
-        "aaj ka din kya hai"
-
-    ].some(
-        x =>
-            t.includes(x)
-    );
-}
-
-
-function timeAnswer() {
-
-    const d =
-        new Date(
-            Date.now() +
-            19800000
-        );
-
-    const h24 =
-        d.getUTCHours();
-
-    const h =
-        h24 % 12 || 12;
-
-    const ap =
-        h24 < 12
-            ? "AM"
-            : "PM";
-
-    const result =
-        `${h}:${String(d.getUTCMinutes()).padStart(2,"0")}:${String(d.getUTCSeconds()).padStart(2,"0")} ${ap}`;
-
-    return language === "hinglish"
-        ?
-        `Abhi India mein IST ke hisaab se ${result} ho rahe hain.`
-        :
-        `The current time in India is ${result} IST.`;
-}
-
-
-function dateAnswer() {
-
-    const d =
-        new Date(
-            Date.now() +
-            19800000
-        );
-
-    const days = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday"
-    ];
-
-    const months = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
-    ];
-
-    return language === "hinglish"
-        ?
-        `Aaj ${days[d.getUTCDay()]} hai, ${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}.`
-        :
-        `Today is ${days[d.getUTCDay()]}, ${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}.`;
-}
-
-
-/* ============================================================
-   SEND
-============================================================ */
-
-async function sendMessage(
-    textOverride = null
-) {
-
-    /*
-       FIRST THING:
-       destroy mic.
-    */
-
-    killMic();
-
-
-    const prompt =
-        textOverride !== null
-            ?
-            String(
-                textOverride
-            ).trim()
-            :
-            userInput.value.trim();
-
-
-    if (
-        !prompt
-    ) {
-
-        return;
-    }
-
-
-    userInput.value =
-        "";
-
-
-    addMessage(
-        "user",
-        prompt
-    );
-
-
-    /*
-       TIME
-    */
-
-    if (
-        isTimeQuestion(
-            prompt
-        )
-    ) {
-
-        const answer =
-            timeAnswer();
-
-        addMessage(
-            "jarvis",
-            answer
-        );
-
-        await speak(
-            answer
-        );
-
-        return;
-    }
-
-
-    /*
-       DATE
-    */
-
-    if (
-        isDateQuestion(
-            prompt
-        )
-    ) {
-
-        const answer =
-            dateAnswer();
-
-        addMessage(
-            "jarvis",
-            answer
-        );
-
-        await speak(
-            answer
-        );
-
-        return;
-    }
-
-
-    /*
-       AI
-    */
-
-    thinkingOn();
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/ask-ai",
-                {
-
-                    method:
-                        "POST",
-
-                    headers:
-                        {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                    body:
-                        JSON.stringify({
-                            prompt:
-                                prompt,
-
-                            language:
-                                language
-                        })
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        thinkingOff();
-
-
-        if (
-            !response.ok
-            ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.error
-                ||
-                "AI request failed"
-            );
         }
 
+        // Text to Speech Function
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Pehle se kuch bol raha ho toh stop karo
 
-        addMessage(
-            "jarvis",
-            data.answer
-        );
+                // IMPORTANT: Bot bolna shuru karne se pehle mic forcefully off karo
+                if(recognition) {
+                    recognition.abort(); 
+                }
+                
+                isSpeaking = true;
+                micBtn.disabled = true; // Mic button ko click hone se roko
 
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-IN';
+                
+                // Jab bot bolna band karega, tab wapas sab normal hoga
+                utterance.onend = function() {
+                    isSpeaking = false;
+                    micBtn.disabled = false; // Ab user dobara click karke bol sakta hai
+                    console.log("Bot finished speaking.");
+                };
 
-        /*
-           MIC IS ALREADY DEAD.
-        */
-
-        await speak(
-            data.answer
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            error
-        );
-
-
-        thinkingOff();
-
-
-        const message =
-            language ===
-            "hinglish"
-
-                ?
-                "Sorry yaar, server ya connection mein problem aa rahi hai."
-
-                :
-                "Sorry, there is a server or connection problem.";
-
-
-        addMessage(
-            "jarvis",
-            message
-        );
-
-
-        await speak(
-            message
-        );
-    }
-}
-
-
-/* ============================================================
-   TYPED SEND
-============================================================ */
-
-function sendTyped() {
-
-    killMic();
-
-    sendMessage();
-}
-
-
-/* ============================================================
-   ENTER
-============================================================ */
-
-function handleKey(
-    event
-) {
-
-    if (
-        event.key ===
-        "Enter"
-    ) {
-
-        event.preventDefault();
-
-        sendTyped();
-    }
-}
-
-
-/* ============================================================
-   INITIAL STATE
-============================================================ */
-
-killMic();
-
-</script>
-
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
 </body>
 </html>
