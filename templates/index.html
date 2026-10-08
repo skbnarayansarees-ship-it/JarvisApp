@@ -3,23 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <link
-        rel="icon"
-        type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=5"
-    >
-
-    <title>JARVIS AI Assistant</title>
-
+    <title>Jarvis AI Assistant</title>
     <style>
-        /* CSS */
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        #logo {
+            width: 250px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.5));
+            transition: all 0.3s ease;
+        }
+        #logo.listening {
+            filter: drop-shadow(0 0 40px rgba(52, 211, 153, 0.8));
+            transform: scale(1.05);
+        }
+        #status {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            min-height: 30px;
+        }
+        #chat-box {
+            width: 90%;
+            max-width: 600px;
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .user-text { color: #38bdf8; font-weight: bold; margin-bottom: 10px; }
+        .ai-text { color: #f8fafc; margin-bottom: 15px; line-height: 1.5; }
+        
+        /* Hidden YouTube player */
+        #yt-player-container {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+        iframe { width: 100%; height: 315px; border-radius: 10px; border: none; }
     </style>
 </head>
-
 <body>
 
-    <!-- JARVIS WEBSITE -->
+    <!-- Aapka Logo[cite: 4] -->
+    <img id="logo" src="/static/logo.png" alt="Jarvis AI Logo">
+    
+    <div id="status">Say "Jarvis" to wake me up...</div>
 
+    <div id="chat-box">
+        <div id="conversation"></div>
+    </div>
+
+    <!-- YouTube Sync Player -->
+    <div id="yt-player-container">
+        <iframe id="yt-player" src="" allow="autoplay; encrypted-media"></iframe>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const logo = document.getElementById('logo');
+        const conversation = document.getElementById('conversation');
+        const ytPlayer = document.getElementById('yt-player');
+        const ytContainer = document.getElementById('yt-player-container');
+
+        let lastTimestamp = 0;
+        
+        // 1. AI Text-to-Speech (Jarvis Voice)
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            // Try to find an English/Hindi voice for Hinglish feel
+            const voices = synth.getVoices();
+            const preferredVoice = voices.find(v => v.lang.includes('hi-IN') || v.lang.includes('en-IN'));
+            if(preferredVoice) utterance.voice = preferredVoice;
+            synth.speak(utterance);
+        }
+
+        function appendMessage(sender, text) {
+            conversation.innerHTML += `<div class="${sender === 'You' ? 'user-text' : 'ai-text'}">${sender}: ${text}</div>`;
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+        }
+
+        // 2. Send Command to Backend
+        function sendCommand(text) {
+            appendMessage("You", text);
+            statusEl.innerText = "Processing...";
+            logo.classList.remove('listening');
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            })
+            .then(response => response.json())
+            .then(data => {
+                appendMessage("Jarvis", data.response);
+                speak(data.response);
+                statusEl.innerText = "Say 'Jarvis' to wake me up...";
+            })
+            .catch(error => {
+                statusEl.innerText = "Connection Error.";
+            });
+        }
+
+        // 3. Continuous Wake-Word Detection (Web Speech API)
+        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (window.SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-IN'; // Works great for Hinglish too
+
+            recognition.onstart = () => { console.log("Mic is listening in background..."); };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+                console.log("Heard:", transcript);
+
+                // Wake word trigger
+                if (transcript.includes('jarvis')) {
+                    statusEl.innerText = "Listening to your command...";
+                    logo.classList.add('listening');
+                    
+                    // Agar "Jarvis" ke sath aage bhi kuch bola hai (e.g. "Jarvis play song")
+                    const commandPart = transcript.substring(transcript.indexOf('jarvis') + 6).trim();
+                    if (commandPart.length > 2) {
+                        sendCommand(commandPart);
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => { console.log("Mic Error:", event.error); };
+            recognition.onend = () => { recognition.start(); }; // Never stop listening
+            
+            // Start listening automatically
+            recognition.start();
+        } else {
+            statusEl.innerText = "Voice recognition not supported in this browser.";
+        }
+
+        // 4. Global Device Sync (Sabke devices pe gaana chalane ke liye)
+        setInterval(() => {
+            fetch('/sync')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.action === "play_youtube" && data.timestamp > lastTimestamp) {
+                        lastTimestamp = data.timestamp;
+                        ytContainer.style.display = "block";
+                        // Auto-play the video
+                        ytPlayer.src = `https://www.youtube.com/embed/${data.payload}?autoplay=1`;
+                        appendMessage("System", "Music sync triggered on all devices.");
+                    }
+                });
+        }, 2000); // Check every 2 seconds
+    </script>
 </body>
 </html>
