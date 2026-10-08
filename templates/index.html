@@ -1,262 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. AI</title>
-    <style>
-        body {
-            background-color: #0d1117;
-            color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            width: 100%;
-            max-width: 800px;
-            margin-bottom: 20px;
-        }
-        .header img { width: 50px; border-radius: 10px; }
-        .chat-container {
-            flex: 1;
-            width: 100%;
-            max-width: 800px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            padding-bottom: 20px;
-        }
-        .message {
-            padding: 12px 18px;
-            border-radius: 8px;
-            max-width: 70%;
-            line-height: 1.4;
-        }
-        .bot-msg { background-color: #1f2937; align-self: flex-start; }
-        .user-msg { background-color: #3b82f6; align-self: flex-end; }
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import google.generativeai as genai
+import os
+
+app = Flask(__name__)
+CORS(app) 
+
+# YAHAN APNI API KEY DAALEIN
+GEMINI_API_KEY = "YOUR_API_KEY_HERE" 
+
+# Gemini AI ko setup kar rahe hain taaki isko duniya ki saari knowledge ho
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    try:
+        data = request.get_json()
+        user_message = data.get("message", "")
         
-        .orb {
-            width: 120px;
-            height: 120px;
-            background: radial-gradient(circle, #3b82f6, #1e3a8a);
-            border-radius: 50%;
-            box-shadow: 0 0 40px #3b82f6;
-            margin: 20px auto;
-            transition: all 0.3s ease;
-        }
-        .orb.listening {
-            box-shadow: 0 0 80px #10b981;
-            background: radial-gradient(circle, #10b981, #065f46);
-        }
+        if not user_message:
+            return jsonify({"response": "Please say something."}), 400
+
+        # Real AI se response lena
+        chat_session = model.start_chat(history=[])
+        response = chat_session.send_message(user_message)
+        bot_reply = response.text
         
-        .input-area {
-            display: flex;
-            width: 100%;
-            max-width: 800px;
-            background-color: #1f2937;
-            border-radius: 25px;
-            padding: 5px 10px;
-            align-items: center;
-        }
-        .mic-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 10px;
-            transition: opacity 0.3s;
-        }
-        /* Jab mic disabled hoga tab ye style apply hoga */
-        .mic-btn:disabled { 
-            opacity: 0.3; 
-            cursor: not-allowed; 
-        }
-        input[type="text"] {
-            flex: 1;
-            background: none;
-            border: none;
-            color: white;
-            padding: 10px;
-            outline: none;
-            font-size: 16px;
-        }
-        .send-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 10px;
-        }
-    </style>
-</head>
-<body>
+        # Bot bolte waqt symbols (* ya #) na bole isliye unhe hata rahe hain
+        bot_reply = bot_reply.replace("*", "").replace("#", "")
+        
+        return jsonify({"response": bot_reply}), 200
 
-    <div class="header">
-        <h2>J.A.R.V.I.S.</h2>
-    </div>
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"response": "Server problem ya API key missing hai."}), 500
 
-    <div class="chat-container" id="chat-box">
-        <div class="message bot-msg">Hello. I'm JARVIS. How can I help you?</div>
-    </div>
-
-    <div class="orb" id="orb"></div>
-
-    <div class="input-area">
-        <button class="mic-btn" id="mic-btn" onclick="toggleMic()">🎙️</button>
-        <input type="text" id="user-input" placeholder="Type your message..." onkeypress="handleEnter(event)">
-        <button class="send-btn" onclick="sendMessage()">▶</button>
-    </div>
-
-    <script>
-        const chatBox = document.getElementById("chat-box");
-        const userInput = document.getElementById("user-input");
-        const orb = document.getElementById("orb");
-        const micBtn = document.getElementById("mic-btn");
-
-        let isSpeaking = false; 
-        let isListening = false;
-        let recognition;
-
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = false; // Strictly false taaki loop na bane
-            recognition.interimResults = false;
-            recognition.lang = 'en-IN';
-
-            recognition.onstart = function() {
-                isListening = true;
-                orb.classList.add("listening");
-                userInput.placeholder = "Listening...";
-            };
-
-            recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                userInput.value = transcript;
-                
-                // Result milte hi mic completely off kar do
-                stopMic();
-                sendMessage(); 
-            };
-
-            recognition.onerror = function(event) {
-                console.log("Mic error: ", event.error);
-                stopMic();
-            };
-
-            recognition.onend = function() {
-                stopMic();
-            };
-        } else {
-            alert("Speech recognition is not supported. Please use Chrome.");
-        }
-
-        // Ek central function banaya hai jo ensure karega ki mic band ho jaye
-        function stopMic() {
-            if (isListening && recognition) {
-                recognition.abort(); // .abort() turant mic band karta hai bina result ka wait kiye
-                isListening = false;
-            }
-            orb.classList.remove("listening");
-            userInput.placeholder = "Type your message...";
-        }
-
-        function toggleMic() {
-            if (isSpeaking) {
-                // Agar bot bol raha hai, click ignore kar do
-                return; 
-            }
-            
-            if (isListening) {
-                stopMic();
-            } else {
-                try {
-                    recognition.start();
-                } catch(e) {
-                    console.log("Recognition already started", e);
-                }
-            }
-        }
-
-        function handleEnter(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-
-        function addMessage(text, sender) {
-            const msgDiv = document.createElement("div");
-            msgDiv.classList.add("message");
-            msgDiv.classList.add(sender === "user" ? "user-msg" : "bot-msg");
-            msgDiv.innerText = text;
-            chatBox.appendChild(msgDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            // Send karne se pehle ensure karo ki mic off hai
-            stopMic(); 
-
-            addMessage(text, "user");
-            userInput.value = "";
-
-            try {
-                const response = await fetch("http://127.0.0.1:5000/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: text })
-                });
-
-                if (!response.ok) throw new Error("Server Error");
-
-                const data = await response.json();
-                addMessage(data.response, "bot");
-                speakText(data.response);
-
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                const errorMsg = "Sorry, there is a connection problem.";
-                addMessage(errorMsg, "bot");
-                speakText(errorMsg);
-            }
-        }
-
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); 
-                
-                // IMPORTANT: Bot ke bolne se pehle mic aur indicator strongly band kar rahe hain
-                stopMic();
-                
-                isSpeaking = true;
-                micBtn.disabled = true; // Button ko disable kar diya
-                
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-IN';
-                
-                utterance.onend = function() {
-                    isSpeaking = false;
-                    micBtn.disabled = false; // Bot jab chup hoga tabhi button enable hoga
-                    console.log("Bot stopped speaking.");
-                };
-
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-    </script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
