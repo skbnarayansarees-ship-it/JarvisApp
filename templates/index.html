@@ -42,14 +42,9 @@
             max-width: 70%;
             line-height: 1.4;
         }
-        .bot-msg {
-            background-color: #1f2937;
-            align-self: flex-start;
-        }
-        .user-msg {
-            background-color: #3b82f6;
-            align-self: flex-end;
-        }
+        .bot-msg { background-color: #1f2937; align-self: flex-start; }
+        .user-msg { background-color: #3b82f6; align-self: flex-end; }
+        
         .orb {
             width: 120px;
             height: 120px;
@@ -63,6 +58,7 @@
             box-shadow: 0 0 80px #10b981;
             background: radial-gradient(circle, #10b981, #065f46);
         }
+        
         .input-area {
             display: flex;
             width: 100%;
@@ -79,8 +75,13 @@
             font-size: 20px;
             cursor: pointer;
             padding: 10px;
+            transition: opacity 0.3s;
         }
-        .mic-btn:disabled { color: #6b7280; cursor: not-allowed; }
+        /* Jab mic disabled hoga tab ye style apply hoga */
+        .mic-btn:disabled { 
+            opacity: 0.3; 
+            cursor: not-allowed; 
+        }
         input[type="text"] {
             flex: 1;
             background: none;
@@ -103,7 +104,6 @@
 <body>
 
     <div class="header">
-        <!-- Yahan aap apna JARVIS logo URL daal sakte hain -->
         <h2>J.A.R.V.I.S.</h2>
     </div>
 
@@ -125,17 +125,18 @@
         const orb = document.getElementById("orb");
         const micBtn = document.getElementById("mic-btn");
 
-        let isSpeaking = false; // Track karne ke liye ki bot bol raha hai ya nahi
+        let isSpeaking = false; 
+        let isListening = false;
         let recognition;
 
-        // Speech Recognition Setup (Mic)
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
-            recognition.continuous = false; // Ek bar bolne ke baad khud band ho jayega
+            recognition.continuous = false; // Strictly false taaki loop na bane
             recognition.interimResults = false;
-            recognition.lang = 'en-IN'; // English India
+            recognition.lang = 'en-IN';
 
             recognition.onstart = function() {
+                isListening = true;
                 orb.classList.add("listening");
                 userInput.placeholder = "Listening...";
             };
@@ -143,30 +144,49 @@
             recognition.onresult = function(event) {
                 const transcript = event.results[0][0].transcript;
                 userInput.value = transcript;
-                sendMessage(); // Bolne ke baad automatically send kar dega
+                
+                // Result milte hi mic completely off kar do
+                stopMic();
+                sendMessage(); 
             };
 
             recognition.onerror = function(event) {
                 console.log("Mic error: ", event.error);
-                orb.classList.remove("listening");
-                userInput.placeholder = "Type your message...";
+                stopMic();
             };
 
             recognition.onend = function() {
-                orb.classList.remove("listening");
-                userInput.placeholder = "Type your message...";
+                stopMic();
             };
         } else {
-            alert("Speech recognition is not supported in this browser. Please use Chrome.");
+            alert("Speech recognition is not supported. Please use Chrome.");
+        }
+
+        // Ek central function banaya hai jo ensure karega ki mic band ho jaye
+        function stopMic() {
+            if (isListening && recognition) {
+                recognition.abort(); // .abort() turant mic band karta hai bina result ka wait kiye
+                isListening = false;
+            }
+            orb.classList.remove("listening");
+            userInput.placeholder = "Type your message...";
         }
 
         function toggleMic() {
-            // Agar bot bol raha hai, toh mic on mat hone do
             if (isSpeaking) {
-                console.log("Bot is speaking. Mic cannot be turned on right now.");
+                // Agar bot bol raha hai, click ignore kar do
                 return; 
             }
-            recognition.start();
+            
+            if (isListening) {
+                stopMic();
+            } else {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.log("Recognition already started", e);
+                }
+            }
         }
 
         function handleEnter(event) {
@@ -188,23 +208,20 @@
             const text = userInput.value.trim();
             if (!text) return;
 
-            // Stop mic immediately if it's still running when user hits send
-            if(recognition) recognition.stop(); 
+            // Send karne se pehle ensure karo ki mic off hai
+            stopMic(); 
 
             addMessage(text, "user");
             userInput.value = "";
 
             try {
-                // Backend API call (Flask default port 5000 hota hai)
                 const response = await fetch("http://127.0.0.1:5000/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: text })
                 });
 
-                if (!response.ok) {
-                    throw new Error("Server or connection problem");
-                }
+                if (!response.ok) throw new Error("Server Error");
 
                 const data = await response.json();
                 addMessage(data.response, "bot");
@@ -212,32 +229,29 @@
 
             } catch (error) {
                 console.error("Fetch Error:", error);
-                addMessage("Sorry, there is a server or connection problem.", "bot");
-                speakText("Sorry, there is a server or connection problem.");
+                const errorMsg = "Sorry, there is a connection problem.";
+                addMessage(errorMsg, "bot");
+                speakText(errorMsg);
             }
         }
 
-        // Text to Speech Function
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Pehle se kuch bol raha ho toh stop karo
-
-                // IMPORTANT: Bot bolna shuru karne se pehle mic forcefully off karo
-                if(recognition) {
-                    recognition.abort(); 
-                }
+                window.speechSynthesis.cancel(); 
+                
+                // IMPORTANT: Bot ke bolne se pehle mic aur indicator strongly band kar rahe hain
+                stopMic();
                 
                 isSpeaking = true;
-                micBtn.disabled = true; // Mic button ko click hone se roko
-
+                micBtn.disabled = true; // Button ko disable kar diya
+                
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-IN';
                 
-                // Jab bot bolna band karega, tab wapas sab normal hoga
                 utterance.onend = function() {
                     isSpeaking = false;
-                    micBtn.disabled = false; // Ab user dobara click karke bol sakta hai
-                    console.log("Bot finished speaking.");
+                    micBtn.disabled = false; // Bot jab chup hoga tabhi button enable hoga
+                    console.log("Bot stopped speaking.");
                 };
 
                 window.speechSynthesis.speak(utterance);
