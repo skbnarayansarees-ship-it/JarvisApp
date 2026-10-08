@@ -1,175 +1,2833 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jarvis AI Assistant</title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#070b12"
+    >
+
+
+    <!-- =====================================================
+         JARVIS FAVICON
+    ====================================================== -->
+
+    <link
+        rel="icon"
+        type="image/png"
+        href="{{ url_for('static', filename='logo.png') }}?v=20"
+    >
+
+    <link
+        rel="shortcut icon"
+        type="image/png"
+        href="{{ url_for('static', filename='logo.png') }}?v=20"
+    >
+
+
+    <title>JARVIS AI Assistant</title>
+
+
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-        #logo { width: 250px; margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.5)); transition: all 0.3s ease; }
-        #logo.listening { filter: drop-shadow(0 0 40px rgba(52, 211, 153, 0.8)); transform: scale(1.05); }
-        #status { font-size: 1.2rem; color: #94a3b8; margin-bottom: 20px; min-height: 30px; }
-        #chat-box { width: 90%; max-width: 600px; background: #1e293b; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 20px; text-align: left; max-height: 300px; overflow-y: auto; }
-        .user-text { color: #38bdf8; font-weight: bold; margin-bottom: 10px; }
-        .ai-text { color: #f8fafc; margin-bottom: 15px; line-height: 1.5; }
-        #yt-player-container { display: none; width: 100%; max-width: 600px; margin-top: 20px; }
-        iframe { width: 100%; height: 315px; border-radius: 10px; border: none; }
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        html,
+        body {
+
+            margin: 0;
+
+            width: 100%;
+
+            min-height: 100%;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at top,
+                    #18243b 0%,
+                    #070b12 48%,
+                    #030509 100%
+                );
+
+            color: white;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+        }
+
+
+        .app {
+
+            width:
+                min(1000px, 95vw);
+
+            min-height:
+                95vh;
+
+            display: flex;
+
+            flex-direction: column;
+
+            padding: 18px;
+        }
+
+
+        /* =====================================================
+           TOP BAR
+        ====================================================== */
+
+        .topbar {
+
+            display: flex;
+
+            justify-content:
+                space-between;
+
+            align-items: center;
+
+            gap: 15px;
+
+            padding-bottom: 15px;
+        }
+
+
+        .brand-area {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+        }
+
+
+        .top-logo {
+
+            width: 58px;
+
+            height: 58px;
+
+            object-fit: cover;
+
+            object-position: center;
+
+            border-radius: 12px;
+
+            display: block;
+
+            flex-shrink: 0;
+
+            background: white;
+        }
+
+
+        .brand {
+
+            font-size: 28px;
+
+            font-weight: 800;
+
+            letter-spacing: 3px;
+
+            white-space: nowrap;
+        }
+
+
+        .status {
+
+            text-align: right;
+
+            font-size: 13px;
+
+            opacity: .78;
+        }
+
+
+        #istClock {
+
+            margin-top: 5px;
+
+            font-size: 15px;
+
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           LANGUAGE SCREEN
+        ====================================================== */
+
+        #languageScreen {
+
+            flex: 1;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+        }
+
+
+        .language-card {
+
+            width:
+                min(470px, 94vw);
+
+            padding: 35px;
+
+            border-radius: 26px;
+
+            background:
+                rgba(255,255,255,.06);
+
+            border:
+                1px solid
+                rgba(255,255,255,.10);
+
+            backdrop-filter:
+                blur(20px);
+
+            text-align: center;
+        }
+
+
+        .language-card h1 {
+
+            margin:
+                0 0 10px;
+
+            font-size: 34px;
+        }
+
+
+        .language-card p {
+
+            margin:
+                0 0 25px;
+
+            opacity: .70;
+        }
+
+
+        .lang-button {
+
+            width: 100%;
+
+            margin-top: 12px;
+
+            padding: 17px 20px;
+
+            border: 0;
+
+            border-radius: 16px;
+
+            background:
+                rgba(255,255,255,.10);
+
+            color: white;
+
+            font-size: 17px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+        }
+
+
+        .lang-button:hover {
+
+            background:
+                rgba(255,255,255,.19);
+        }
+
+
+        /* =====================================================
+           CHAT
+        ====================================================== */
+
+        #chatScreen {
+
+            display: none;
+
+            flex: 1;
+
+            flex-direction: column;
+
+            min-height: 0;
+        }
+
+
+        .chat-box {
+
+            flex: 1;
+
+            min-height: 0;
+
+            overflow-y: auto;
+
+            padding:
+                5px 2px 20px;
+        }
+
+
+        .message-row {
+
+            display: flex;
+
+            margin:
+                12px 0;
+        }
+
+
+        .message-row.user {
+
+            justify-content: flex-end;
+        }
+
+
+        .message-row.jarvis {
+
+            justify-content: flex-start;
+        }
+
+
+        .message {
+
+            max-width:
+                min(760px, 88%);
+
+            padding:
+                14px 17px;
+
+            border-radius:
+                18px;
+
+            line-height:
+                1.55;
+
+            white-space:
+                pre-wrap;
+
+            overflow-wrap:
+                anywhere;
+        }
+
+
+        .message.user {
+
+            background:
+                #2667ff;
+        }
+
+
+        .message.jarvis {
+
+            background:
+                rgba(255,255,255,.08);
+
+            border:
+                1px solid
+                rgba(255,255,255,.08);
+        }
+
+
+        .thinking {
+
+            opacity:
+                .60;
+
+            font-style:
+                italic;
+        }
+
+
+        /* =====================================================
+           YOUTUBE
+        ====================================================== */
+
+        .youtube-area {
+
+            display: none;
+
+            width:
+                min(760px, 100%);
+
+            margin:
+                5px auto 15px;
+
+            border-radius:
+                18px;
+
+            overflow:
+                hidden;
+
+            background:
+                black;
+        }
+
+
+        .youtube-area iframe {
+
+            display: block;
+
+            width: 100%;
+
+            aspect-ratio:
+                16 / 9;
+
+            border: 0;
+        }
+
+
+        /* =====================================================
+           ORB
+        ====================================================== */
+
+        .orb-area {
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            padding:
+                12px 0 17px;
+        }
+
+
+        .orb {
+
+            width: 100px;
+
+            height: 100px;
+
+            border-radius: 50%;
+
+            background:
+                radial-gradient(
+                    circle at 30% 30%,
+                    #ffffff,
+                    #70a7ff 18%,
+                    #2465ff 50%,
+                    #10204a 72%,
+                    #050912 100%
+                );
+
+            box-shadow:
+                0 0 25px
+                rgba(80,140,255,.80),
+
+                0 0 75px
+                rgba(50,100,255,.40);
+
+            cursor: pointer;
+
+            transition:
+                transform .15s,
+                box-shadow .15s;
+        }
+
+
+        .orb.listening {
+
+            animation:
+                pulse .65s infinite alternate;
+        }
+
+
+        .orb.speaking {
+
+            box-shadow:
+                0 0 30px
+                rgba(90,160,255,.95),
+
+                0 0 100px
+                rgba(50,100,255,.65);
+        }
+
+
+        @keyframes pulse {
+
+            from {
+
+                transform:
+                    scale(1);
+            }
+
+            to {
+
+                transform:
+                    scale(1.12);
+            }
+        }
+
+
+        /* =====================================================
+           INPUT
+        ====================================================== */
+
+        .input-area {
+
+            display: flex;
+
+            gap: 10px;
+
+            align-items: center;
+        }
+
+
+        #userInput {
+
+            flex: 1;
+
+            min-width: 0;
+
+            padding:
+                16px 18px;
+
+            border-radius:
+                16px;
+
+            border:
+                1px solid
+                rgba(255,255,255,.10);
+
+            background:
+                rgba(255,255,255,.06);
+
+            color: white;
+
+            font-size: 16px;
+
+            outline: none;
+        }
+
+
+        #userInput::placeholder {
+
+            color:
+                rgba(255,255,255,.45);
+        }
+
+
+        .mic-button,
+        .send-button {
+
+            width: 54px;
+
+            height: 54px;
+
+            flex-shrink: 0;
+
+            border: 0;
+
+            border-radius: 16px;
+
+            background:
+                rgba(255,255,255,.10);
+
+            color: white;
+
+            cursor: pointer;
+
+            font-size: 20px;
+        }
+
+
+        .mic-button:hover,
+        .send-button:hover {
+
+            background:
+                rgba(255,255,255,.18);
+        }
+
+
+        /* =====================================================
+           FOOTER
+        ====================================================== */
+
+        .footer {
+
+            text-align: center;
+
+            margin-top: 10px;
+
+            padding:
+                8px 0 3px;
+
+            font-size: 12px;
+
+            color:
+                rgba(255,255,255,.58);
+
+            letter-spacing: .4px;
+        }
+
+
+        .developer-name {
+
+            color:
+                rgba(255,255,255,.90);
+
+            font-weight: 700;
+        }
+
+
+        /* =====================================================
+           MOBILE
+        ====================================================== */
+
+        @media (max-width: 650px) {
+
+            .app {
+
+                width: 100vw;
+
+                min-height: 100vh;
+
+                padding: 12px;
+            }
+
+
+            .brand {
+
+                font-size: 21px;
+
+                letter-spacing: 2px;
+            }
+
+
+            .top-logo {
+
+                width: 48px;
+
+                height: 48px;
+            }
+
+
+            .status {
+
+                font-size: 11px;
+            }
+
+
+            #istClock {
+
+                font-size: 13px;
+            }
+
+
+            .language-card {
+
+                padding:
+                    28px 20px;
+            }
+
+
+            .message {
+
+                max-width: 94%;
+            }
+
+
+            .orb {
+
+                width: 86px;
+
+                height: 86px;
+            }
+        }
+
     </style>
+
 </head>
+
+
 <body>
 
-    <img id="logo" src="/static/logo.png" alt="Jarvis AI Logo">
-    
-    <div id="status">Click anywhere to activate Jarvis...</div>
 
-    <div id="chat-box">
-        <div id="conversation"></div>
+<div class="app">
+
+
+    <!-- =====================================================
+         TOP BAR
+    ====================================================== -->
+
+    <div class="topbar">
+
+
+        <div class="brand-area">
+
+
+            <img
+                src="{{ url_for('static', filename='logo.png') }}?v=20"
+                alt="JARVIS"
+                class="top-logo"
+            >
+
+
+            <div class="brand">
+                J.A.R.V.I.S.
+            </div>
+
+
+        </div>
+
+
+        <div class="status">
+
+
+            <div id="languageStatus">
+                Language not selected
+            </div>
+
+
+            <div id="istClock">
+                IST --:--:-- --
+            </div>
+
+
+        </div>
+
+
     </div>
 
-    <div id="yt-player-container">
-        <iframe id="yt-player" src="" allow="autoplay; encrypted-media"></iframe>
+
+    <!-- =====================================================
+         LANGUAGE
+    ====================================================== -->
+
+    <section id="languageScreen">
+
+
+        <div class="language-card">
+
+
+            <h1>
+                Welcome to JARVIS
+            </h1>
+
+
+            <p>
+                Select your conversation language
+            </p>
+
+
+            <button
+                class="lang-button"
+                onclick="selectLanguage('english')"
+            >
+                1 — English
+            </button>
+
+
+            <button
+                class="lang-button"
+                onclick="selectLanguage('hinglish')"
+            >
+                2 — Hinglish
+            </button>
+
+
+        </div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         CHAT
+    ====================================================== -->
+
+    <section id="chatScreen">
+
+
+        <div
+            class="chat-box"
+            id="chatBox"
+        ></div>
+
+
+        <!-- YOUTUBE -->
+
+        <div
+            class="youtube-area"
+            id="youtubeArea"
+        >
+
+            <iframe
+                id="youtubePlayer"
+                allow="
+                    autoplay;
+                    encrypted-media;
+                    picture-in-picture
+                "
+                allowfullscreen
+            ></iframe>
+
+        </div>
+
+
+        <!-- ORB -->
+
+        <div class="orb-area">
+
+            <div
+                class="orb"
+                id="orb"
+                onclick="startManualListening()"
+                title="Click to speak"
+            ></div>
+
+        </div>
+
+
+        <!-- INPUT -->
+
+        <div class="input-area">
+
+
+            <button
+                class="mic-button"
+                id="micButton"
+                onclick="startManualListening()"
+                title="Start microphone"
+            >
+                🎤
+            </button>
+
+
+            <input
+                id="userInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Type your message..."
+                onkeydown="handleKey(event)"
+            >
+
+
+            <button
+                class="send-button"
+                onclick="sendMessage()"
+                title="Send"
+            >
+                ➤
+            </button>
+
+
+        </div>
+
+
+    </section>
+
+
+    <!-- =====================================================
+         CREDIT
+    ====================================================== -->
+
+    <div class="footer">
+
+        Developed by
+        <span class="developer-name">
+            Aryan
+        </span>
+
     </div>
 
-    <script>
-        const statusEl = document.getElementById('status');
-        const logo = document.getElementById('logo');
-        const conversation = document.getElementById('conversation');
-        const ytPlayer = document.getElementById('yt-player');
-        const ytContainer = document.getElementById('yt-player-container');
 
-        let lastTimestamp = 0;
-        let isSpeaking = false; 
-        let lastSpokenTime = 0;
+</div>
 
-        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        
-        // Single phrase mode stops audio buffering loop
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-IN';
 
-        function startListening() {
-            // Self-hearing prevention guard
-            if (isSpeaking || (Date.now() - lastSpokenTime < 1500)) return;
-            try { 
-                recognition.start(); 
-            } catch(e) {}
+<script>
+
+
+// ============================================================
+// STATE
+// ============================================================
+
+let selectedLanguage = null;
+
+let recognition = null;
+
+let recognitionMode = "idle";
+
+let isListening = false;
+
+let ttsSpeaking = false;
+
+let currentAudio = null;
+
+let currentAudioUrl = null;
+
+let ttsAbortController = null;
+
+let ttsGeneration = 0;
+
+let musicWindow = null;
+
+
+// ============================================================
+// ELEMENTS
+// ============================================================
+
+const languageScreen =
+    document.getElementById(
+        "languageScreen"
+    );
+
+
+const chatScreen =
+    document.getElementById(
+        "chatScreen"
+    );
+
+
+const chatBox =
+    document.getElementById(
+        "chatBox"
+    );
+
+
+const userInput =
+    document.getElementById(
+        "userInput"
+    );
+
+
+const orb =
+    document.getElementById(
+        "orb"
+    );
+
+
+const micButton =
+    document.getElementById(
+        "micButton"
+    );
+
+
+const languageStatus =
+    document.getElementById(
+        "languageStatus"
+    );
+
+
+const istClock =
+    document.getElementById(
+        "istClock"
+    );
+
+
+const youtubeArea =
+    document.getElementById(
+        "youtubeArea"
+    );
+
+
+const youtubePlayer =
+    document.getElementById(
+        "youtubePlayer"
+    );
+
+
+// ============================================================
+// IST CLOCK
+// ============================================================
+
+const IST_OFFSET = 19800000;
+
+
+function getISTParts() {
+
+    const date =
+        new Date(
+            Date.now()
+            +
+            IST_OFFSET
+        );
+
+
+    return {
+
+        year:
+            date.getUTCFullYear(),
+
+        month:
+            date.getUTCMonth() + 1,
+
+        date:
+            date.getUTCDate(),
+
+        hour:
+            date.getUTCHours(),
+
+        minute:
+            date.getUTCMinutes(),
+
+        second:
+            date.getUTCSeconds(),
+
+        day:
+            date.getUTCDay(),
+    };
+}
+
+
+function pad(value) {
+
+    return String(value)
+        .padStart(
+            2,
+            "0"
+        );
+}
+
+
+function hour12(value) {
+
+    const h =
+        value % 12;
+
+
+    return h === 0
+        ? 12
+        : h;
+}
+
+
+function ampm(value) {
+
+    return value < 12
+        ? "AM"
+        : "PM";
+}
+
+
+function updateClock() {
+
+    const t =
+        getISTParts();
+
+
+    istClock.textContent =
+        `IST ${pad(hour12(t.hour))}:${pad(t.minute)}:${pad(t.second)} ${ampm(t.hour)}`;
+}
+
+
+updateClock();
+
+
+setInterval(
+    updateClock,
+    1000
+);
+
+
+// ============================================================
+// LANGUAGE
+// ============================================================
+
+function selectLanguage(
+    language
+) {
+
+    selectedLanguage =
+        language;
+
+
+    languageScreen.style.display =
+        "none";
+
+
+    chatScreen.style.display =
+        "flex";
+
+
+    languageStatus.textContent =
+        language === "hinglish"
+            ? "Hinglish selected"
+            : "English selected";
+
+
+    if (
+        language === "hinglish"
+    ) {
+
+        addMessage(
+            "jarvis",
+            "Haan bilkul. Main naturally Hinglish mein baat karunga. Batao kya poochna hai."
+        );
+
+    } else {
+
+        addMessage(
+            "jarvis",
+            "Hello. I'm JARVIS. How can I help you?"
+        );
+    }
+
+
+    initializeRecognition();
+
+
+    userInput.focus();
+}
+
+
+// ============================================================
+// MESSAGES
+// ============================================================
+
+function addMessage(
+    type,
+    text
+) {
+
+    const row =
+        document.createElement(
+            "div"
+        );
+
+
+    row.className =
+        `message-row ${type}`;
+
+
+    const bubble =
+        document.createElement(
+            "div"
+        );
+
+
+    bubble.className =
+        `message ${type}`;
+
+
+    bubble.textContent =
+        text;
+
+
+    row.appendChild(
+        bubble
+    );
+
+
+    chatBox.appendChild(
+        row
+    );
+
+
+    chatBox.scrollTop =
+        chatBox.scrollHeight;
+}
+
+
+function addThinking() {
+
+    addMessage(
+        "jarvis",
+
+        selectedLanguage === "hinglish"
+            ? "Soch raha hoon..."
+            : "Thinking..."
+    );
+
+
+    const messages =
+        document.querySelectorAll(
+            ".message.jarvis"
+        );
+
+
+    if (messages.length) {
+
+        messages[
+            messages.length - 1
+        ].classList.add(
+            "thinking"
+        );
+    }
+}
+
+
+function removeThinking() {
+
+    const messages =
+        document.querySelectorAll(
+            ".message.jarvis"
+        );
+
+
+    if (!messages.length) {
+
+        return;
+    }
+
+
+    const last =
+        messages[
+            messages.length - 1
+        ];
+
+
+    if (
+        last.textContent ===
+            "Thinking..."
+        ||
+        last.textContent ===
+            "Soch raha hoon..."
+    ) {
+
+        last.parentElement.remove();
+    }
+}
+
+
+// ============================================================
+// TIME
+// ============================================================
+
+function isTimeQuestion(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const phrases = [
+
+        "what time is it",
+        "what's the time",
+        "whats the time",
+        "current time",
+        "current ist time",
+        "ist time",
+        "india time",
+        "indian time",
+        "kolkata time",
+        "time in kolkata",
+        "time in india",
+        "tell me the time",
+
+        "abhi kya time hai",
+        "abhi kitne baje hain",
+        "abhi kitne baje hai",
+        "abhi time kya hai",
+        "abhi ka time kya hai",
+        "time kya hai",
+        "time batao",
+        "time bata",
+        "kitne baje hain",
+        "kitne baje hai",
+        "india mein kya time hai",
+        "india me kya time hai",
+        "kolkata mein kya time hai",
+        "kolkata me kya time hai",
+    ];
+
+
+    return phrases.some(
+        phrase =>
+            t.includes(
+                phrase
+            )
+    );
+}
+
+
+// ============================================================
+// DATE
+// ============================================================
+
+function isDateQuestion(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const phrases = [
+
+        "what date is it",
+        "what is today's date",
+        "what's today's date",
+        "today's date",
+        "todays date",
+        "current date",
+        "today date",
+        "date today",
+        "what day is today",
+        "which day is today",
+
+        "aaj ki date kya hai",
+        "aaj ki tarikh kya hai",
+        "aaj kya date hai",
+        "aaj ka din kya hai",
+        "aaj ka day kya hai",
+        "aaj konsa din hai",
+        "aaj kaun sa din hai",
+        "aaj ka date kya hai",
+    ];
+
+
+    return phrases.some(
+        phrase =>
+            t.includes(
+                phrase
+            )
+    );
+}
+
+
+function getTimeAnswer() {
+
+    const t =
+        getISTParts();
+
+
+    const exact =
+        `${hour12(t.hour)}:${pad(t.minute)}:${pad(t.second)} ${ampm(t.hour)}`;
+
+
+    if (
+        selectedLanguage === "hinglish"
+    ) {
+
+        let part;
+
+
+        if (
+            t.hour >= 4
+            &&
+            t.hour < 12
+        ) {
+
+            part = "subah";
+
+        } else if (
+            t.hour >= 12
+            &&
+            t.hour < 17
+        ) {
+
+            part = "dopahar";
+
+        } else if (
+            t.hour >= 17
+            &&
+            t.hour < 21
+        ) {
+
+            part = "shaam";
+
+        } else {
+
+            part = "raat";
         }
 
-        function speak(text) {
-            isSpeaking = true;
-            
-            // Abort mic immediately to clear remaining audio buffer
-            try { recognition.abort(); } catch(e) {}
-            window.speechSynthesis.cancel();
 
-            const synth = window.speechSynthesis;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            
-            const voices = synth.getVoices();
-            const preferredVoice = voices.find(v => v.lang.includes('hi-IN') || v.lang.includes('en-IN'));
-            if(preferredVoice) utterance.voice = preferredVoice;
+        return (
+            `Abhi Kolkata aur poore India mein IST ke hisaab se ${exact} ho rahe hain, yani ${part} ka time hai.`
+        );
+    }
 
-            utterance.onstart = () => {
-                isSpeaking = true;
-                try { recognition.abort(); } catch(e) {}
+
+    return (
+        `The current time in Kolkata, India is ${exact} IST.`
+    );
+}
+
+
+function getDateAnswer() {
+
+    const t =
+        getISTParts();
+
+
+    const days = [
+
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ];
+
+
+    const months = [
+
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+
+
+    if (
+        selectedLanguage === "hinglish"
+    ) {
+
+        return (
+            `Aaj ${days[t.day]} hai aur IST ke hisaab se date ${t.date} ${months[t.month - 1]} ${t.year} hai.`
+        );
+    }
+
+
+    return (
+        `Today is ${days[t.day]}, ${t.date} ${months[t.month - 1]} ${t.year} in India.`
+    );
+}
+
+
+// ============================================================
+// TEXT FOR TTS
+// ============================================================
+
+function cleanForSpeech(
+    text
+) {
+
+    let result =
+        String(
+            text || ""
+        );
+
+
+    result =
+        result.replace(
+            /```[\s\S]*?```/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /\[([^\]]+)\]\([^)]+\)/g,
+            "$1"
+        );
+
+
+    result =
+        result.replace(
+            /[*_#>`~|]/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /["“”‘’]/g,
+            " "
+        );
+
+
+    result =
+        result.replace(
+            /[\[\]\{\}]/g,
+            " "
+        );
+
+
+    try {
+
+        result =
+            result.replace(
+                /\p{Extended_Pictographic}/gu,
+                " "
+            );
+
+    } catch (error) {
+    }
+
+
+    return result
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .trim();
+}
+
+
+// ============================================================
+// STOP TTS
+// ============================================================
+
+function stopTTS() {
+
+    ttsGeneration++;
+
+
+    ttsSpeaking =
+        false;
+
+
+    if (
+        ttsAbortController
+    ) {
+
+        try {
+
+            ttsAbortController.abort();
+
+        } catch (e) {
+        }
+
+
+        ttsAbortController =
+            null;
+    }
+
+
+    if (
+        currentAudio
+    ) {
+
+        try {
+
+            currentAudio.pause();
+
+            currentAudio.currentTime =
+                0;
+
+            currentAudio.src =
+                "";
+
+        } catch (e) {
+        }
+
+
+        currentAudio =
+            null;
+    }
+
+
+    if (
+        currentAudioUrl
+    ) {
+
+        try {
+
+            URL.revokeObjectURL(
+                currentAudioUrl
+            );
+
+        } catch (e) {
+        }
+
+
+        currentAudioUrl =
+            null;
+    }
+
+
+    if (
+        "speechSynthesis"
+        in window
+    ) {
+
+        try {
+
+            speechSynthesis.cancel();
+
+        } catch (e) {
+        }
+    }
+
+
+    orb.classList.remove(
+        "speaking"
+    );
+}
+
+
+// ============================================================
+// TTS
+//
+// IMPORTANT:
+// NO microphone is started here.
+// JARVIS can speak without listening.
+// ============================================================
+
+async function speakText(
+    text
+) {
+
+    stopTTS();
+
+
+    const cleanText =
+        cleanForSpeech(
+            text
+        );
+
+
+    if (!cleanText) {
+
+        return;
+    }
+
+
+    ttsSpeaking =
+        true;
+
+
+    /*
+        IMPORTANT:
+        Microphone stays OFF here.
+    */
+
+    if (
+        recognition
+        &&
+        recognitionMode === "manual"
+    ) {
+
+        try {
+
+            recognition.stop();
+
+        } catch (e) {
+        }
+
+
+        recognitionMode =
+            "idle";
+
+        isListening =
+            false;
+
+        orb.classList.remove(
+            "listening"
+        );
+    }
+
+
+    orb.classList.add(
+        "speaking"
+    );
+
+
+    const generation =
+        ttsGeneration;
+
+
+    try {
+
+        ttsAbortController =
+            new AbortController();
+
+
+        const response =
+            await fetch(
+                "/speak",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                    body:
+                        JSON.stringify(
+                            {
+                                text:
+                                    cleanText,
+
+                                language:
+                                    selectedLanguage,
+                            }
+                        ),
+
+                    signal:
+                        ttsAbortController
+                            .signal,
+                }
+            );
+
+
+        if (
+            generation !==
+            ttsGeneration
+        ) {
+
+            return;
+        }
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                "Voice server failed."
+            );
+        }
+
+
+        const blob =
+            await response.blob();
+
+
+        if (
+            generation !==
+            ttsGeneration
+        ) {
+
+            return;
+        }
+
+
+        currentAudioUrl =
+            URL.createObjectURL(
+                blob
+            );
+
+
+        currentAudio =
+            new Audio(
+                currentAudioUrl
+            );
+
+
+        currentAudio.preload =
+            "auto";
+
+
+        currentAudio.volume =
+            1;
+
+
+        currentAudio.onplay =
+            function() {
+
+                ttsSpeaking =
+                    true;
+
+
+                orb.classList.add(
+                    "speaking"
+                );
+
+
+                /*
+                    NEVER start microphone here.
+                */
             };
-            
-            utterance.onend = () => {
-                isSpeaking = false;
-                lastSpokenTime = Date.now();
-                setTimeout(startListening, 1500); // 1.5s gap after speaking stops
+
+
+        currentAudio.onended =
+            function() {
+
+                ttsSpeaking =
+                    false;
+
+
+                orb.classList.remove(
+                    "speaking"
+                );
+
+
+                if (
+                    currentAudioUrl
+                ) {
+
+                    try {
+
+                        URL.revokeObjectURL(
+                            currentAudioUrl
+                        );
+
+                    } catch (e) {
+                    }
+
+
+                    currentAudioUrl =
+                        null;
+                }
+
+
+                currentAudio =
+                    null;
             };
 
-            utterance.onerror = () => {
-                isSpeaking = false;
-                lastSpokenTime = Date.now();
-                setTimeout(startListening, 1000);
+
+        currentAudio.onerror =
+            function() {
+
+                ttsSpeaking =
+                    false;
+
+
+                orb.classList.remove(
+                    "speaking"
+                );
+
+
+                currentAudio =
+                    null;
             };
 
-            synth.speak(utterance);
+
+        await currentAudio.play();
+
+
+    } catch (error) {
+
+        if (
+            error.name ===
+            "AbortError"
+        ) {
+
+            return;
         }
 
-        function appendMessage(sender, text) {
-            conversation.innerHTML += `<div class="${sender === 'You' ? 'user-text' : 'ai-text'}">${sender}: ${text}</div>`;
-            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-        }
 
-        function sendCommand(text) {
-            appendMessage("You", text);
-            statusEl.innerText = "Thinking...";
-            logo.classList.remove('listening');
+        console.error(
+            "TTS error:",
+            error
+        );
 
-            fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
-            })
-            .then(response => response.json())
-            .then(data => {
-                appendMessage("Jarvis", data.response);
-                speak(data.response);
-                statusEl.innerText = "Say 'Jarvis' to wake me up...";
-            })
-            .catch(error => {
-                statusEl.innerText = "Connection Error.";
-            });
-        }
 
-        recognition.onstart = () => {
-            if (!isSpeaking && Date.now() - lastSpokenTime >= 1500) {
-                statusEl.innerText = "Jarvis Active! Say 'Jarvis'...";
+        ttsSpeaking =
+            false;
+
+
+        orb.classList.remove(
+            "speaking"
+        );
+
+
+        /*
+            Browser fallback.
+            Still NO microphone here.
+        */
+
+        if (
+            "speechSynthesis"
+            in window
+        ) {
+
+            try {
+
+                const speech =
+                    new SpeechSynthesisUtterance(
+                        cleanText
+                    );
+
+
+                speech.lang =
+                    "en-IN";
+
+
+                speech.rate =
+                    selectedLanguage ===
+                    "hinglish"
+                        ? 0.9
+                        : 0.95;
+
+
+                speech.onstart =
+                    function() {
+
+                        ttsSpeaking =
+                            true;
+
+
+                        orb.classList.add(
+                            "speaking"
+                        );
+                    };
+
+
+                speech.onend =
+                    function() {
+
+                        ttsSpeaking =
+                            false;
+
+
+                        orb.classList.remove(
+                            "speaking"
+                        );
+                    };
+
+
+                speech.onerror =
+                    function() {
+
+                        ttsSpeaking =
+                            false;
+
+
+                        orb.classList.remove(
+                            "speaking"
+                        );
+                    };
+
+
+                speechSynthesis.cancel();
+
+
+                speechSynthesis.speak(
+                    speech
+                );
+
+
+            } catch (fallbackError) {
+
+                console.error(
+                    "Browser voice error:",
+                    fallbackError
+                );
             }
+        }
+    }
+}
+
+
+// ============================================================
+// VOICE RECOGNITION
+//
+// IMPORTANT:
+// Recognition is ONLY started by manual mic click.
+// ============================================================
+
+function initializeRecognition() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition
+        ||
+        window.webkitSpeechRecognition;
+
+
+    if (
+        !SpeechRecognition
+    ) {
+
+        return;
+    }
+
+
+    if (
+        recognition
+    ) {
+
+        return;
+    }
+
+
+    recognition =
+        new SpeechRecognition();
+
+
+    recognition.continuous =
+        false;
+
+
+    recognition.interimResults =
+        true;
+
+
+    recognition.lang =
+        "en-IN";
+
+
+    recognition.onstart =
+        function() {
+
+            isListening =
+                true;
+
+
+            recognitionMode =
+                "manual";
+
+
+            orb.classList.add(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "⏹️";
         };
 
-        recognition.onresult = (event) => {
-            // STRICT CHECK: Reject audio captured during or immediately after speech
-            if (isSpeaking || (Date.now() - lastSpokenTime < 1500)) {
-                return;
-            }
 
-            const transcript = event.results[0][0].transcript.toLowerCase().trim();
-            console.log("Heard:", transcript);
+    recognition.onresult =
+        function(event) {
 
-            if (transcript.includes('jarvis')) {
-                statusEl.innerText = "Listening to your command...";
-                logo.classList.add('listening');
-                
-                const commandPart = transcript.substring(transcript.indexOf('jarvis') + 6).trim();
-                if (commandPart.length > 2) {
-                    sendCommand(commandPart);
+            let finalText =
+                "";
+
+
+            let interimText =
+                "";
+
+
+            for (
+                let i =
+                    event.resultIndex;
+
+                i <
+                event.results.length;
+
+                i++
+            ) {
+
+                const transcript =
+                    event.results[i][0]
+                        .transcript
+                        .trim();
+
+
+                if (
+                    event.results[i]
+                        .isFinal
+                ) {
+
+                    finalText +=
+                        (
+                            finalText
+                                ? " "
+                                : ""
+                        )
+                        +
+                        transcript;
+
+                } else {
+
+                    interimText +=
+                        (
+                            interimText
+                                ? " "
+                                : ""
+                        )
+                        +
+                        transcript;
                 }
             }
-        };
 
-        recognition.onerror = (event) => { 
-            console.error("Mic Error:", event.error); 
-        };
-        
-        recognition.onend = () => {
-            if (!isSpeaking && (Date.now() - lastSpokenTime >= 1500)) {
-                setTimeout(startListening, 400);
+
+            if (
+                interimText
+            ) {
+
+                userInput.value =
+                    interimText;
+            }
+
+
+            if (
+                finalText
+            ) {
+
+                userInput.value =
+                    finalText;
+
+
+                recognitionMode =
+                    "idle";
+
+
+                setTimeout(
+                    sendMessage,
+                    80
+                );
             }
         };
 
-        document.addEventListener('click', () => {
-            startListening();
-        }, { once: true });
 
-        // Global Device Sync
-        setInterval(() => {
-            fetch('/sync')
-                .then(r => r.json())
-                .then(data => {
-                    if (data.action === "play_youtube" && data.timestamp > lastTimestamp) {
-                        lastTimestamp = data.timestamp;
-                        ytContainer.style.display = "block";
-                        ytPlayer.src = `https://www.youtube.com/embed/${data.payload}?autoplay=1`;
-                    }
-                });
-        }, 2000);
-    </script>
+    recognition.onend =
+        function() {
+
+            isListening =
+                false;
+
+
+            recognitionMode =
+                "idle";
+
+
+            orb.classList.remove(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "🎤";
+        };
+
+
+    recognition.onerror =
+        function(event) {
+
+            console.log(
+                "Speech recognition error:",
+                event.error
+            );
+
+
+            isListening =
+                false;
+
+
+            recognitionMode =
+                "idle";
+
+
+            orb.classList.remove(
+                "listening"
+            );
+
+
+            micButton.textContent =
+                "🎤";
+        };
+}
+
+
+// ============================================================
+// MANUAL MICROPHONE
+//
+// THIS IS THE ONLY PLACE WHERE MIC STARTS.
+// ============================================================
+
+function startManualListening() {
+
+    /*
+        If JARVIS is speaking and user explicitly
+        clicks the mic, stop JARVIS first.
+    */
+
+    if (
+        ttsSpeaking
+    ) {
+
+        stopTTS();
+    }
+
+
+    if (
+        !recognition
+    ) {
+
+        initializeRecognition();
+    }
+
+
+    if (
+        !recognition
+    ) {
+
+        addMessage(
+            "jarvis",
+            "Voice input is not supported in this browser. Chrome ya Edge use karo."
+        );
+
+
+        return;
+    }
+
+
+    /*
+        If mic is already listening,
+        clicking again stops it.
+    */
+
+    if (
+        isListening
+    ) {
+
+        try {
+
+            recognition.stop();
+
+        } catch (e) {
+        }
+
+
+        return;
+    }
+
+
+    recognitionMode =
+        "manual";
+
+
+    try {
+
+        recognition.lang =
+            "en-IN";
+
+
+        recognition.start();
+
+    } catch (e) {
+
+        console.log(
+            "Mic start error:",
+            e
+        );
+    }
+}
+
+
+// ============================================================
+// MUSIC DETECTION
+// ============================================================
+
+function isMusicCommand(
+    text
+) {
+
+    const t =
+        text
+            .toLowerCase()
+            .trim();
+
+
+    const actions = [
+
+        "play",
+        "bajao",
+        "baja do",
+        "chalao",
+        "chala do",
+        "sunao",
+        "suna do",
+    ];
+
+
+    const musicWords = [
+
+        "song",
+        "music",
+        "gaana",
+        "gana",
+        "gaane",
+        "track",
+    ];
+
+
+    const hasAction =
+        actions.some(
+            word =>
+                t.includes(
+                    word
+                )
+        );
+
+
+    const hasMusic =
+        musicWords.some(
+            word =>
+                t.includes(
+                    word
+                )
+        );
+
+
+    return (
+        hasAction
+        &&
+        (
+            hasMusic
+            ||
+            t.includes(
+                "youtube"
+            )
+            ||
+            t.startsWith(
+                "play "
+            )
+        )
+    );
+}
+
+
+function extractMusicQuery(
+    text
+) {
+
+    let query =
+        text.toLowerCase();
+
+
+    const patterns = [
+
+        /\bplay\b/gi,
+        /\bplease\b/gi,
+        /\bopen\b/gi,
+        /\bwatch\b/gi,
+        /\blisten\s+to\b/gi,
+        /\blisten\b/gi,
+
+        /\bon\s+youtube\b/gi,
+        /\byoutube\b/gi,
+        /\byou\s+tube\b/gi,
+
+        /\b(song|music|track)\b/gi,
+
+        /\b(gaana|gana|gaane)\b/gi,
+
+        /\b(bajao|baja do)\b/gi,
+
+        /\b(chalao|chala do)\b/gi,
+
+        /\b(sunao|suna do)\b/gi,
+
+        /\b(par|pe)\b/gi,
+    ];
+
+
+    for (
+        const pattern
+        of patterns
+    ) {
+
+        query =
+            query.replace(
+                pattern,
+                " "
+            );
+    }
+
+
+    return query
+        .replace(
+            /\s+/g,
+            " "
+        )
+        .trim()
+        ||
+        "music";
+}
+
+
+// ============================================================
+// PLAY MUSIC
+// ============================================================
+
+async function playMusic(
+    originalText
+) {
+
+    stopTTS();
+
+
+    const query =
+        extractMusicQuery(
+            originalText
+        );
+
+
+    addThinking();
+
+
+    let musicWindow = null;
+
+
+    try {
+
+        musicWindow =
+            window.open(
+                "about:blank",
+                "_blank"
+            );
+
+
+        const response =
+            await fetch(
+                "/youtube",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                    body:
+                        JSON.stringify(
+                            {
+                                query:
+                                    query,
+                            }
+                        ),
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        removeThinking();
+
+
+        if (
+            !response.ok
+            ||
+            !data.success
+        ) {
+
+            throw new Error(
+                data.error
+                ||
+                "YouTube search failed."
+            );
+        }
+
+
+        if (
+            data.video_id
+        ) {
+
+            youtubeArea.style.display =
+                "block";
+
+
+            youtubePlayer.src =
+                "https://www.youtube.com/embed/"
+                +
+                encodeURIComponent(
+                    data.video_id
+                )
+                +
+                "?autoplay=1&playsinline=1&rel=0";
+
+
+            if (
+                musicWindow
+                &&
+                !musicWindow.closed
+            ) {
+
+                musicWindow.location.href =
+                    data.url;
+
+            } else {
+
+                window.open(
+                    data.url,
+                    "_blank"
+                );
+            }
+
+
+            addMessage(
+                "jarvis",
+
+                selectedLanguage ===
+                "hinglish"
+
+                    ?
+
+                `Theek hai, ${data.title} YouTube par play kar raha hoon.`
+
+                    :
+
+                `Okay, playing ${data.title} on YouTube.`
+            );
+
+
+        } else {
+
+            if (
+                musicWindow
+                &&
+                !musicWindow.closed
+            ) {
+
+                musicWindow.location.href =
+                    data.url;
+
+            } else {
+
+                window.open(
+                    data.url,
+                    "_blank"
+                );
+            }
+
+
+            const message =
+                selectedLanguage ===
+                "hinglish"
+
+                    ?
+
+                `YouTube par ${query} search kar raha hoon.`
+
+                    :
+
+                `Searching YouTube for ${query}.`;
+
+
+            addMessage(
+                "jarvis",
+                message
+            );
+
+
+            speakText(
+                message
+            );
+        }
+
+
+    } catch (error) {
+
+        removeThinking();
+
+
+        const message =
+            selectedLanguage ===
+            "hinglish"
+
+                ?
+
+            "YouTube par song play nahi ho paaya."
+
+                :
+
+            "I could not play that song on YouTube.";
+
+
+        addMessage(
+            "jarvis",
+            message
+        );
+    }
+}
+
+
+// ============================================================
+// SEND MESSAGE
+// ============================================================
+
+async function sendMessage() {
+
+    const prompt =
+        userInput.value.trim();
+
+
+    if (
+        !prompt
+    ) {
+
+        return;
+    }
+
+
+    /*
+        Make absolutely sure microphone is not running
+        when sending a message.
+    */
+
+    if (
+        recognition
+        &&
+        isListening
+    ) {
+
+        try {
+
+            recognition.stop();
+
+        } catch (e) {
+        }
+
+
+        isListening =
+            false;
+
+
+        recognitionMode =
+            "idle";
+
+
+        orb.classList.remove(
+            "listening"
+        );
+
+
+        micButton.textContent =
+            "🎤";
+    }
+
+
+    userInput.value =
+        "";
+
+
+    addMessage(
+        "user",
+        prompt
+    );
+
+
+    /*
+        MUSIC
+    */
+
+    if (
+        isMusicCommand(
+            prompt
+        )
+    ) {
+
+        await playMusic(
+            prompt
+        );
+
+
+        return;
+    }
+
+
+    /*
+        TIME
+    */
+
+    if (
+        isTimeQuestion(
+            prompt
+        )
+    ) {
+
+        const answer =
+            getTimeAnswer();
+
+
+        addMessage(
+            "jarvis",
+            answer
+        );
+
+
+        speakText(
+            answer
+        );
+
+
+        return;
+    }
+
+
+    /*
+        DATE
+    */
+
+    if (
+        isDateQuestion(
+            prompt
+        )
+    ) {
+
+        const answer =
+            getDateAnswer();
+
+
+        addMessage(
+            "jarvis",
+            answer
+        );
+
+
+        speakText(
+            answer
+        );
+
+
+        return;
+    }
+
+
+    /*
+        AI
+    */
+
+    addThinking();
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/ask-ai",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                    body:
+                        JSON.stringify(
+                            {
+                                prompt:
+                                    prompt,
+
+                                language:
+                                    selectedLanguage,
+                            }
+                        ),
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        removeThinking();
+
+
+        if (
+            !response.ok
+            ||
+            !data.success
+        ) {
+
+            throw new Error(
+                data.error
+                ||
+                "Server error."
+            );
+        }
+
+
+        addMessage(
+            "jarvis",
+            data.answer
+        );
+
+
+        /*
+            JARVIS SPEAKS.
+            MIC STAYS OFF.
+        */
+
+        speakText(
+            data.answer
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "AI ERROR:",
+            error
+        );
+
+
+        removeThinking();
+
+
+        const message =
+            selectedLanguage ===
+            "hinglish"
+
+                ?
+
+            "Sorry yaar, abhi server ya connection mein problem aa rahi hai."
+
+                :
+
+            "Sorry, there is a server or connection problem.";
+
+
+        addMessage(
+            "jarvis",
+            message
+        );
+
+
+        speakText(
+            message
+        );
+    }
+}
+
+
+// ============================================================
+// ENTER KEY
+// ============================================================
+
+function handleKey(
+    event
+) {
+
+    if (
+        event.key === "Enter"
+    ) {
+
+        event.preventDefault();
+
+
+        sendMessage();
+    }
+}
+
+
+</script>
+
 </body>
+
 </html>
