@@ -1,111 +1,774 @@
-from flask import Flask, render_template, request, jsonify
-import urllib.request
-import urllib.parse
-import re
-import time
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    send_file,
+    after_this_request,
+)
+from pathlib import Path
+from urllib.parse import quote
+import asyncio
 import os
-import requests
-import xml.etree.ElementTree as ET
-import google.generativeai as genai
-from dotenv import load_dotenv
+import tempfile
+import uuid
 
-load_dotenv()
+import requests
+import edge_tts
+import yt_dlp
+
+
+# ============================================================
+# APP
+# ============================================================
 
 app = Flask(__name__)
 
-# API Key Setup
-api_key = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
+PORT = int(os.environ.get("PORT", "5000"))
 
-global_state = {
-    "action": "none",
-    "payload": "",
-    "timestamp": time.time()
-}
+BASE_DIR = Path(__file__).resolve().parent
 
-system_instruction = """
-You are Jarvis, an advanced, highly empathetic, and human-like AI assistant. 
-- You have real-time internet access provided via prompts. Always act like you know the latest current affairs.
-- If the user speaks in English, reply in English. 
-- If the user speaks in Hinglish (Hindi written in English script), reply completely in Hinglish.
-- Act like a caring friend. If they say "mujhe accha nhin lg rhaa", "kya kar rahe ho", or sound sad, show deep empathy, console them, and ask what's bothering them naturally.
-- Keep your responses short, natural, clear, and conversational.
+
+# ============================================================
+# OPENROUTER
+# ============================================================
+
+OPENROUTER_URL = (
+    "https://openrouter.ai/api/v1/chat/completions"
+)
+
+OPENROUTER_MODEL = "deepseek/deepseek-chat"
+
+OPENROUTER_API_KEY = (
+    os.environ.get(
+        "OPENROUTER_API_KEY",
+        ""
+    ).strip()
+)
+
+
+# Local development fallback only.
+# Do NOT upload openrouter_key.txt to GitHub.
+if not OPENROUTER_API_KEY:
+
+    local_key_file = (
+        BASE_DIR / "openrouter_key.txt"
+    )
+
+    if local_key_file.exists():
+
+        try:
+
+            OPENROUTER_API_KEY = (
+                local_key_file
+                .read_text(
+                    encoding="utf-8"
+                )
+                .strip()
+            )
+
+        except Exception:
+
+            OPENROUTER_API_KEY = ""
+
+
+# ============================================================
+# TTS
+# ============================================================
+
+TTS_VOICE = "en-IN-PrabhatNeural"
+
+
+# ============================================================
+# AI PROMPTS
+# ============================================================
+
+ENGLISH_SYSTEM_PROMPT = """
+You are JARVIS, a helpful AI web assistant.
+
+The user selected English.
+
+Reply naturally, clearly, and conversationally.
+
+Do not use unnecessary markdown.
+Do not use emojis unless the user asks for them.
+Do not use huge unnecessary headings.
+
+When the user asks for live/current information, never pretend
+you have live access unless the application actually provides it.
+
+Never claim that you performed an action that you could not perform.
 """
 
-def search_youtube(query):
-    """Instant YouTube Search"""
-    query_string = urllib.parse.urlencode({"search_query": query})
-    html_content = urllib.request.urlopen("https://www.youtube.com/results?" + query_string)
-    search_results = re.findall(r'watch\?v=(\S{11})', html_content.read().decode())
-    if search_results:
-        return search_results[0]
-    return None
 
-def get_latest_news(query):
-    """Real-Time Internet Search via Google News RSS"""
+HINGLISH_SYSTEM_PROMPT = """
+You are JARVIS, a friendly AI web assistant.
+
+The user selected Hinglish.
+
+Reply in natural everyday Indian Hinglish.
+
+Sound like a normal person talking, not like a textbook.
+
+You can freely mix Hindi and English naturally.
+
+Use common conversational words such as:
+haan, theek hai, batao, abhi, kar sakte ho,
+problem aa rahi hai, bilkul, etc.
+
+Do not force Hindi translations of technical words.
+
+Do not use unnecessary markdown.
+Do not use emojis unless the user asks for them.
+
+When the user asks for live/current information, never pretend
+you have live access unless the application actually provides it.
+
+Never claim that you performed an action that you could not perform.
+"""
+
+
+# ============================================================
+# HOME
+# ============================================================
+
+@app.route("/")
+def home():
+
+    return render_template(
+        "index.html"
+    )
+
+
+# ============================================================
+# HEALTH
+# ============================================================
+
+@app.route("/health")
+def health():
+
+    return jsonify(
+        {
+            "success": True,
+            "message": "Jarvis server is running",
+        }
+    )
+
+
+# ============================================================
+# AI CHAT
+# ============================================================
+
+@app.route(
+    "/ask-ai",
+    methods=["POST"]
+)
+def ask_ai():
+
     try:
-        url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
-        resp = requests.get(url, timeout=5)
-        root = ET.fromstring(resp.content)
-        news_items = []
-        for item in root.findall('.//item')[:3]:
-            title = item.find('title').text
-            news_items.append(title)
-        if news_items:
-            return "Live Web Info: " + " | ".join(news_items)
-    except Exception:
-        pass
-    return ""
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+        data = (
+            request.get_json(
+                silent=True
+            )
+            or {}
+        )
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    global global_state
-    user_msg = request.json.get('message', '').lower()
-    
-    # 1. YouTube Play Command
-    if 'play' in user_msg:
-        song_name = user_msg.replace('jarvis', '').replace('play', '').strip()
-        video_id = search_youtube(song_name)
-        
-        if video_id:
-            global_state = {
-                "action": "play_youtube",
-                "payload": video_id,
-                "timestamp": time.time()
-            }
-            return jsonify({"response": f"Playing {song_name} for everyone right away, boss.", "action": "play"})
+        prompt = str(
+            data.get(
+                "prompt",
+                ""
+            )
+        ).strip()
+
+        language = str(
+            data.get(
+                "language",
+                "english"
+            )
+        ).lower().strip()
+
+
+        if not prompt:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "Please enter a message.",
+                }
+            ), 400
+
+
+        if not OPENROUTER_API_KEY:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "OpenRouter API key is not configured.",
+                }
+            ), 500
+
+
+        if language == "hinglish":
+
+            system_prompt = (
+                HINGLISH_SYSTEM_PROMPT
+            )
+
         else:
-            return jsonify({"response": "Sorry boss, gaana nahi mila."})
 
-    # 2. Check for News / Latest Info
-    real_time_context = ""
-    trigger_words = ['news', 'latest', 'aaj', 'kal', 'kaun', 'match', 'score', 'kya chal raha hai', 'kya kar rahe ho']
-    if any(word in user_msg for word in trigger_words):
-        real_time_context = get_latest_news(user_msg.replace('jarvis', '').strip())
+            system_prompt = (
+                ENGLISH_SYSTEM_PROMPT
+            )
 
-    if real_time_context:
-        full_prompt = f"Real-Time Data: {real_time_context}\n\nUser: {user_msg}"
-    else:
-        full_prompt = "User: " + user_msg
+
+        headers = {
+
+            "Authorization":
+                f"Bearer {OPENROUTER_API_KEY}",
+
+            "Content-Type":
+                "application/json",
+
+            "HTTP-Referer":
+                request.host_url.rstrip("/"),
+
+            "X-Title":
+                "JARVIS AI Assistant",
+        }
+
+
+        payload = {
+
+            "model":
+                OPENROUTER_MODEL,
+
+            "messages": [
+
+                {
+                    "role":
+                        "system",
+
+                    "content":
+                        system_prompt,
+                },
+
+                {
+                    "role":
+                        "user",
+
+                    "content":
+                        prompt,
+                },
+            ],
+
+            "temperature":
+                0.3,
+
+            "max_tokens":
+                4000,
+        }
+
+
+        response = requests.post(
+
+            OPENROUTER_URL,
+
+            headers=headers,
+
+            json=payload,
+
+            timeout=90,
+        )
+
+
+        if response.status_code != 200:
+
+            try:
+
+                error_data = (
+                    response.json()
+                )
+
+                error_message = (
+                    error_data
+                    .get(
+                        "error",
+                        {}
+                    )
+                    .get(
+                        "message"
+                    )
+                )
+
+            except Exception:
+
+                error_message = None
+
+
+            if not error_message:
+
+                error_message = (
+                    response.text
+                )
+
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        (
+                            "OpenRouter error: "
+                            + str(
+                                error_message
+                            )
+                        ),
+                }
+            ), 502
+
+
+        result = response.json()
+
+
+        choices = result.get(
+            "choices",
+            []
+        )
+
+
+        if not choices:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "OpenRouter returned no answer.",
+                }
+            ), 502
+
+
+        answer = (
+            choices[0]
+            .get(
+                "message",
+                {}
+            )
+            .get(
+                "content",
+                ""
+            )
+        )
+
+
+        if not answer:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "OpenRouter returned an empty response.",
+                }
+            ), 502
+
+
+        return jsonify(
+            {
+                "success": True,
+                "answer":
+                    answer.strip(),
+            }
+        )
+
+
+    except requests.Timeout:
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "AI request timed out. Please try again.",
+            }
+        ), 504
+
+
+    except Exception as exc:
+
+        print(
+            "ASK AI ERROR:",
+            repr(exc)
+        )
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "AI server error.",
+            }
+        ), 500
+
+
+# ============================================================
+# TTS
+# ============================================================
+
+def generate_tts_file(
+    text: str,
+    output_path: str,
+):
+
+    async def runner():
+
+        communicator = (
+            edge_tts.Communicate(
+                text,
+                TTS_VOICE,
+                rate="+0%",
+                volume="+0%",
+            )
+        )
+
+        await communicator.save(
+            output_path
+        )
+
+
+    asyncio.run(
+        runner()
+    )
+
+
+@app.route(
+    "/speak",
+    methods=["POST"]
+)
+def speak():
+
+    temp_path = None
 
     try:
-        chat_session = model.start_chat(history=[])
-        response = chat_session.send_message(system_instruction + "\n" + full_prompt)
-        ai_reply = response.text.strip()
-    except Exception:
-        ai_reply = "Network mein thodi dikkat hai boss."
 
-    return jsonify({"response": ai_reply, "action": "chat"})
+        data = (
+            request.get_json(
+                silent=True
+            )
+            or {}
+        )
 
-@app.route('/sync', methods=['GET'])
-def sync_devices():
-    global global_state
-    return jsonify(global_state)
+        text = str(
+            data.get(
+                "text",
+                ""
+            )
+        ).strip()
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+
+        if not text:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "No text provided.",
+                }
+            ), 400
+
+
+        # Safety limit
+        text = text[:20000]
+
+
+        filename = (
+            "jarvis_"
+            + uuid.uuid4().hex
+            + ".mp3"
+        )
+
+
+        temp_path = os.path.join(
+            tempfile.gettempdir(),
+            filename
+        )
+
+
+        generate_tts_file(
+            text,
+            temp_path
+        )
+
+
+        if not os.path.exists(
+            temp_path
+        ):
+
+            raise RuntimeError(
+                "TTS file was not created."
+            )
+
+
+        @after_this_request
+        def cleanup(response):
+
+            try:
+
+                if (
+                    temp_path
+                    and os.path.exists(
+                        temp_path
+                    )
+                ):
+
+                    os.remove(
+                        temp_path
+                    )
+
+            except Exception as cleanup_error:
+
+                print(
+                    "TTS CLEANUP ERROR:",
+                    repr(
+                        cleanup_error
+                    )
+                )
+
+            return response
+
+
+        return send_file(
+
+            temp_path,
+
+            mimetype="audio/mpeg",
+
+            as_attachment=False,
+
+            download_name="jarvis.mp3",
+
+            max_age=0,
+        )
+
+
+    except Exception as exc:
+
+        print(
+            "TTS ERROR:",
+            repr(exc)
+        )
+
+
+        try:
+
+            if (
+                temp_path
+                and os.path.exists(
+                    temp_path
+                )
+            ):
+
+                os.remove(
+                    temp_path
+                )
+
+        except Exception:
+
+            pass
+
+
+        return jsonify(
+            {
+                "success": False,
+                "error":
+                    "Voice generation failed.",
+            }
+        ), 500
+
+
+# ============================================================
+# YOUTUBE
+# ============================================================
+
+@app.route(
+    "/youtube",
+    methods=["POST"]
+)
+def youtube():
+
+    try:
+
+        data = (
+            request.get_json(
+                silent=True
+            )
+            or {}
+        )
+
+        query = str(
+            data.get(
+                "query",
+                ""
+            )
+        ).strip()
+
+
+        if not query:
+
+            return jsonify(
+                {
+                    "success": False,
+                    "error":
+                        "No YouTube query provided.",
+                }
+            ), 400
+
+
+        search_term = (
+            "ytsearch1:"
+            + query
+        )
+
+
+        options = {
+
+            "quiet":
+                True,
+
+            "no_warnings":
+                True,
+
+            "skip_download":
+                True,
+
+            "extract_flat":
+                True,
+
+            "noplaylist":
+                True,
+        }
+
+
+        with yt_dlp.YoutubeDL(
+            options
+        ) as ydl:
+
+            info = ydl.extract_info(
+                search_term,
+                download=False
+            )
+
+
+        entries = info.get(
+            "entries",
+            []
+        )
+
+
+        if not entries:
+
+            search_url = (
+                "https://www.youtube.com/results"
+                "?search_query="
+                + quote(query)
+            )
+
+
+            return jsonify(
+                {
+                    "success": True,
+                    "video_id": None,
+                    "title": query,
+                    "url": search_url,
+                }
+            )
+
+
+        entry = entries[0]
+
+
+        video_id = entry.get(
+            "id"
+        )
+
+
+        title = (
+            entry.get(
+                "title"
+            )
+            or query
+        )
+
+
+        if video_id:
+
+            video_url = (
+                "https://www.youtube.com/watch?v="
+                + str(video_id)
+            )
+
+
+            return jsonify(
+                {
+                    "success": True,
+                    "video_id":
+                        video_id,
+                    "title":
+                        title,
+                    "url":
+                        video_url,
+                }
+            )
+
+
+        search_url = (
+            "https://www.youtube.com/results"
+            "?search_query="
+            + quote(query)
+        )
+
+
+        return jsonify(
+            {
+                "success": True,
+                "video_id": None,
+                "title": query,
+                "url": search_url,
+            }
+        )
+
+
+    except Exception as exc:
+
+        print(
+            "YOUTUBE ERROR:",
+            repr(exc)
+        )
+
+
+        search_url = (
+            "https://www.youtube.com/results"
+            "?search_query="
+            + quote(query)
+        )
+
+
+        return jsonify(
+            {
+                "success": True,
+                "video_id": None,
+                "title": query,
+                "url": search_url,
+            }
+        )
+
+
+# ============================================================
+# RUN
+# ============================================================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=PORT,
+        debug=False,
+    )
