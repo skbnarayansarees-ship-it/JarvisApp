@@ -17,19 +17,19 @@
 
 
     <!-- =====================================================
-         JARVIS FAVICON
+         FAVICON
     ====================================================== -->
 
     <link
         rel="icon"
         type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=20"
+        href="{{ url_for('static', filename='logo.png') }}?v=50"
     >
 
     <link
         rel="shortcut icon"
         type="image/png"
-        href="{{ url_for('static', filename='logo.png') }}?v=20"
+        href="{{ url_for('static', filename='logo.png') }}?v=50"
     >
 
 
@@ -45,11 +45,8 @@
 
         html,
         body {
-
             margin: 0;
-
             width: 100%;
-
             min-height: 100%;
         }
 
@@ -138,11 +135,11 @@
 
             border-radius: 12px;
 
+            background: white;
+
             display: block;
 
             flex-shrink: 0;
-
-            background: white;
         }
 
 
@@ -153,8 +150,6 @@
             font-weight: 800;
 
             letter-spacing: 3px;
-
-            white-space: nowrap;
         }
 
 
@@ -178,8 +173,20 @@
         }
 
 
+        #micStatus {
+
+            margin-top: 4px;
+
+            font-size: 11px;
+
+            font-weight: 700;
+
+            opacity: .7;
+        }
+
+
         /* =====================================================
-           LANGUAGE SCREEN
+           LANGUAGE
         ====================================================== */
 
         #languageScreen {
@@ -300,8 +307,7 @@
 
             display: flex;
 
-            margin:
-                12px 0;
+            margin: 12px 0;
         }
 
 
@@ -325,17 +331,13 @@
             padding:
                 14px 17px;
 
-            border-radius:
-                18px;
+            border-radius: 18px;
 
-            line-height:
-                1.55;
+            line-height: 1.55;
 
-            white-space:
-                pre-wrap;
+            white-space: pre-wrap;
 
-            overflow-wrap:
-                anywhere;
+            overflow-wrap: anywhere;
         }
 
 
@@ -359,11 +361,9 @@
 
         .thinking {
 
-            opacity:
-                .60;
+            opacity: .60;
 
-            font-style:
-                italic;
+            font-style: italic;
         }
 
 
@@ -381,14 +381,11 @@
             margin:
                 5px auto 15px;
 
-            border-radius:
-                18px;
+            border-radius: 18px;
 
-            overflow:
-                hidden;
+            overflow: hidden;
 
-            background:
-                black;
+            background: black;
         }
 
 
@@ -398,8 +395,7 @@
 
             width: 100%;
 
-            aspect-ratio:
-                16 / 9;
+            aspect-ratio: 16 / 9;
 
             border: 0;
         }
@@ -476,15 +472,11 @@
         @keyframes pulse {
 
             from {
-
-                transform:
-                    scale(1);
+                transform: scale(1);
             }
 
             to {
-
-                transform:
-                    scale(1.12);
+                transform: scale(1.12);
             }
         }
 
@@ -512,8 +504,7 @@
             padding:
                 16px 18px;
 
-            border-radius:
-                16px;
+            border-radius: 16px;
 
             border:
                 1px solid
@@ -586,8 +577,6 @@
 
             color:
                 rgba(255,255,255,.58);
-
-            letter-spacing: .4px;
         }
 
 
@@ -687,7 +676,7 @@
 
 
             <img
-                src="{{ url_for('static', filename='logo.png') }}?v=20"
+                src="{{ url_for('static', filename='logo.png') }}?v=50"
                 alt="JARVIS"
                 class="top-logo"
             >
@@ -711,6 +700,11 @@
 
             <div id="istClock">
                 IST --:--:-- --
+            </div>
+
+
+            <div id="micStatus">
+                MIC OFF
             </div>
 
 
@@ -799,12 +793,14 @@
 
         <div class="orb-area">
 
+
             <div
                 class="orb"
                 id="orb"
-                onclick="startManualListening()"
+                onclick="toggleMicrophone()"
                 title="Click to speak"
             ></div>
+
 
         </div>
 
@@ -817,8 +813,8 @@
             <button
                 class="mic-button"
                 id="micButton"
-                onclick="startManualListening()"
-                title="Start microphone"
+                onclick="toggleMicrophone()"
+                title="Microphone"
             >
                 🎤
             </button>
@@ -835,7 +831,7 @@
 
             <button
                 class="send-button"
-                onclick="sendMessage()"
+                onclick="sendTypedMessage()"
                 title="Send"
             >
                 ➤
@@ -849,7 +845,7 @@
 
 
     <!-- =====================================================
-         CREDIT
+         FOOTER
     ====================================================== -->
 
     <div class="footer">
@@ -869,16 +865,22 @@
 
 
 // ============================================================
-// STATE
+// GLOBAL STATE
 // ============================================================
 
 let selectedLanguage = null;
 
 let recognition = null;
 
-let recognitionMode = "idle";
+let recognitionSupported = false;
 
-let isListening = false;
+let micActive = false;
+
+let micRequested = false;
+
+let waitingForVoiceResult = false;
+
+let pendingVoiceText = "";
 
 let ttsSpeaking = false;
 
@@ -890,7 +892,7 @@ let ttsAbortController = null;
 
 let ttsGeneration = 0;
 
-let musicWindow = null;
+let aiController = null;
 
 
 // ============================================================
@@ -945,6 +947,12 @@ const istClock =
     );
 
 
+const micStatus =
+    document.getElementById(
+        "micStatus"
+    );
+
+
 const youtubeArea =
     document.getElementById(
         "youtubeArea"
@@ -958,10 +966,46 @@ const youtubePlayer =
 
 
 // ============================================================
+// MICROPHONE UI
+// ============================================================
+
+function setMicUI(
+    active
+) {
+
+    if (active) {
+
+        micStatus.textContent =
+            "MIC ON";
+
+        micButton.textContent =
+            "⏹️";
+
+        orb.classList.add(
+            "listening"
+        );
+
+    } else {
+
+        micStatus.textContent =
+            "MIC OFF";
+
+        micButton.textContent =
+            "🎤";
+
+        orb.classList.remove(
+            "listening"
+        );
+    }
+}
+
+
+// ============================================================
 // IST CLOCK
 // ============================================================
 
-const IST_OFFSET = 19800000;
+const IST_OFFSET =
+    19800000;
 
 
 function getISTParts() {
@@ -995,7 +1039,7 @@ function getISTParts() {
             date.getUTCSeconds(),
 
         day:
-            date.getUTCDay(),
+            date.getUTCDay()
     };
 }
 
@@ -1014,7 +1058,6 @@ function hour12(value) {
 
     const h =
         value % 12;
-
 
     return h === 0
         ? 12
@@ -1097,6 +1140,11 @@ function selectLanguage(
     initializeRecognition();
 
 
+    setMicUI(
+        false
+    );
+
+
     userInput.focus();
 }
 
@@ -1166,7 +1214,9 @@ function addThinking() {
         );
 
 
-    if (messages.length) {
+    if (
+        messages.length
+    ) {
 
         messages[
             messages.length - 1
@@ -1185,7 +1235,9 @@ function removeThinking() {
         );
 
 
-    if (!messages.length) {
+    if (
+        !messages.length
+    ) {
 
         return;
     }
@@ -1211,7 +1263,7 @@ function removeThinking() {
 
 
 // ============================================================
-// TIME
+// TIME / DATE
 // ============================================================
 
 function isTimeQuestion(
@@ -1252,7 +1304,7 @@ function isTimeQuestion(
         "india mein kya time hai",
         "india me kya time hai",
         "kolkata mein kya time hai",
-        "kolkata me kya time hai",
+        "kolkata me kya time hai"
     ];
 
 
@@ -1264,10 +1316,6 @@ function isTimeQuestion(
     );
 }
 
-
-// ============================================================
-// DATE
-// ============================================================
 
 function isDateQuestion(
     text
@@ -1299,7 +1347,7 @@ function isDateQuestion(
         "aaj ka day kya hai",
         "aaj konsa din hai",
         "aaj kaun sa din hai",
-        "aaj ka date kya hai",
+        "aaj ka date kya hai"
     ];
 
 
@@ -1385,7 +1433,7 @@ function getDateAnswer() {
         "Wednesday",
         "Thursday",
         "Friday",
-        "Saturday",
+        "Saturday"
     ];
 
 
@@ -1402,7 +1450,7 @@ function getDateAnswer() {
         "September",
         "October",
         "November",
-        "December",
+        "December"
     ];
 
 
@@ -1423,7 +1471,7 @@ function getDateAnswer() {
 
 
 // ============================================================
-// TEXT FOR TTS
+// CLEAN TTS TEXT
 // ============================================================
 
 function cleanForSpeech(
@@ -1479,7 +1527,7 @@ function cleanForSpeech(
                 " "
             );
 
-    } catch (error) {
+    } catch (e) {
     }
 
 
@@ -1489,6 +1537,66 @@ function cleanForSpeech(
             " "
         )
         .trim();
+}
+
+
+// ============================================================
+// STOP MICROPHONE
+//
+// IMPORTANT:
+// This NEVER restarts it.
+// ============================================================
+
+function stopMicrophone(
+    clearPending = true
+) {
+
+    micRequested =
+        false;
+
+
+    waitingForVoiceResult =
+        false;
+
+
+    if (
+        recognition
+        &&
+        micActive
+    ) {
+
+        try {
+
+            recognition.abort();
+
+        } catch (e) {
+
+            try {
+
+                recognition.stop();
+
+            } catch (ignored) {
+            }
+        }
+    }
+
+
+    micActive =
+        false;
+
+
+    if (
+        clearPending
+    ) {
+
+        pendingVoiceText =
+            "";
+    }
+
+
+    setMicUI(
+        false
+    );
 }
 
 
@@ -1587,14 +1695,20 @@ function stopTTS() {
 // ============================================================
 // TTS
 //
-// IMPORTANT:
-// NO microphone is started here.
-// JARVIS can speak without listening.
+// NO MICROPHONE STARTS HERE.
 // ============================================================
 
 async function speakText(
     text
 ) {
+
+    /*
+        Absolutely stop mic BEFORE generating/playing
+        the answer.
+    */
+
+    stopMicrophone();
+
 
     stopTTS();
 
@@ -1605,7 +1719,9 @@ async function speakText(
         );
 
 
-    if (!cleanText) {
+    if (
+        !cleanText
+    ) {
 
         return;
     }
@@ -1613,37 +1729,6 @@ async function speakText(
 
     ttsSpeaking =
         true;
-
-
-    /*
-        IMPORTANT:
-        Microphone stays OFF here.
-    */
-
-    if (
-        recognition
-        &&
-        recognitionMode === "manual"
-    ) {
-
-        try {
-
-            recognition.stop();
-
-        } catch (e) {
-        }
-
-
-        recognitionMode =
-            "idle";
-
-        isListening =
-            false;
-
-        orb.classList.remove(
-            "listening"
-        );
-    }
 
 
     orb.classList.add(
@@ -1672,23 +1757,22 @@ async function speakText(
                     headers:
                         {
                             "Content-Type":
-                                "application/json",
+                                "application/json"
                         },
 
                     body:
-                        JSON.stringify(
-                            {
-                                text:
-                                    cleanText,
+                        JSON.stringify({
 
-                                language:
-                                    selectedLanguage,
-                            }
-                        ),
+                            text:
+                                cleanText,
+
+                            language:
+                                selectedLanguage
+                        }),
 
                     signal:
                         ttsAbortController
-                            .signal,
+                            .signal
                 }
             );
 
@@ -1707,7 +1791,7 @@ async function speakText(
         ) {
 
             throw new Error(
-                "Voice server failed."
+                "TTS server failed."
             );
         }
 
@@ -1752,14 +1836,14 @@ async function speakText(
                     true;
 
 
-                orb.classList.add(
-                    "speaking"
-                );
-
-
                 /*
-                    NEVER start microphone here.
+                    IMPORTANT:
+                    No microphone code here.
                 */
+
+                setMicUI(
+                    false
+                );
             };
 
 
@@ -1796,6 +1880,15 @@ async function speakText(
 
                 currentAudio =
                     null;
+
+
+                /*
+                    MIC REMAINS OFF.
+                */
+
+                setMicUI(
+                    false
+                );
             };
 
 
@@ -1808,6 +1901,11 @@ async function speakText(
 
                 orb.classList.remove(
                     "speaking"
+                );
+
+
+                setMicUI(
+                    false
                 );
 
 
@@ -1831,7 +1929,7 @@ async function speakText(
 
 
         console.error(
-            "TTS error:",
+            "TTS ERROR:",
             error
         );
 
@@ -1847,7 +1945,7 @@ async function speakText(
 
         /*
             Browser fallback.
-            Still NO microphone here.
+            Still no microphone.
         */
 
         if (
@@ -1884,6 +1982,11 @@ async function speakText(
                         orb.classList.add(
                             "speaking"
                         );
+
+
+                        setMicUI(
+                            false
+                        );
                     };
 
 
@@ -1896,6 +1999,11 @@ async function speakText(
 
                         orb.classList.remove(
                             "speaking"
+                        );
+
+
+                        setMicUI(
+                            false
                         );
                     };
 
@@ -1910,6 +2018,11 @@ async function speakText(
                         orb.classList.remove(
                             "speaking"
                         );
+
+
+                        setMicUI(
+                            false
+                        );
                     };
 
 
@@ -1920,11 +2033,10 @@ async function speakText(
                     speech
                 );
 
-
             } catch (fallbackError) {
 
                 console.error(
-                    "Browser voice error:",
+                    "BROWSER TTS ERROR:",
                     fallbackError
                 );
             }
@@ -1934,13 +2046,21 @@ async function speakText(
 
 
 // ============================================================
-// VOICE RECOGNITION
+// RECOGNITION SETUP
 //
-// IMPORTANT:
-// Recognition is ONLY started by manual mic click.
+// Recognition is CREATED here only.
+// It NEVER auto-starts.
 // ============================================================
 
 function initializeRecognition() {
+
+    if (
+        recognition
+    ) {
+
+        return;
+    }
+
 
     const SpeechRecognition =
         window.SpeechRecognition
@@ -1952,21 +2072,29 @@ function initializeRecognition() {
         !SpeechRecognition
     ) {
 
-        return;
-    }
-
-
-    if (
-        recognition
-    ) {
+        recognitionSupported =
+            false;
 
         return;
     }
+
+
+    recognitionSupported =
+        true;
 
 
     recognition =
         new SpeechRecognition();
 
+
+    recognition.lang =
+        "en-IN";
+
+
+    /*
+        One user question only.
+        It automatically ends after the utterance.
+    */
 
     recognition.continuous =
         false;
@@ -1976,33 +2104,58 @@ function initializeRecognition() {
         true;
 
 
-    recognition.lang =
-        "en-IN";
-
-
     recognition.onstart =
         function() {
 
-            isListening =
+            /*
+                NEVER allow recognition while JARVIS is speaking.
+            */
+
+            if (
+                ttsSpeaking
+                ||
+                !micRequested
+            ) {
+
+                try {
+
+                    recognition.abort();
+
+                } catch (e) {
+                }
+
+
+                return;
+            }
+
+
+            micActive =
                 true;
 
 
-            recognitionMode =
-                "manual";
-
-
-            orb.classList.add(
-                "listening"
+            setMicUI(
+                true
             );
-
-
-            micButton.textContent =
-                "⏹️";
         };
 
 
     recognition.onresult =
         function(event) {
+
+            /*
+                Hard protection:
+                JARVIS's own speech is never accepted.
+            */
+
+            if (
+                ttsSpeaking
+                ||
+                !micRequested
+            ) {
+
+                return;
+            }
+
 
             let finalText =
                 "";
@@ -2069,18 +2222,36 @@ function initializeRecognition() {
                 finalText
             ) {
 
-                userInput.value =
+                /*
+                    QUESTION IS COMPLETE.
+
+                    Turn microphone state OFF immediately.
+                    Then wait for recognition.onend.
+                */
+
+                pendingVoiceText =
                     finalText;
 
 
-                recognitionMode =
-                    "idle";
+                waitingForVoiceResult =
+                    true;
 
 
-                setTimeout(
-                    sendMessage,
-                    80
+                micRequested =
+                    false;
+
+
+                setMicUI(
+                    false
                 );
+
+
+                try {
+
+                    recognition.stop();
+
+                } catch (e) {
+                }
             }
         };
 
@@ -2088,21 +2259,53 @@ function initializeRecognition() {
     recognition.onend =
         function() {
 
-            isListening =
+            micActive =
                 false;
 
 
-            recognitionMode =
-                "idle";
-
-
-            orb.classList.remove(
-                "listening"
+            setMicUI(
+                false
             );
 
 
-            micButton.textContent =
-                "🎤";
+            /*
+                NO automatic restart.
+            */
+
+            if (
+                waitingForVoiceResult
+                &&
+                pendingVoiceText
+            ) {
+
+                const question =
+                    pendingVoiceText;
+
+
+                pendingVoiceText =
+                    "";
+
+
+                waitingForVoiceResult =
+                    false;
+
+
+                /*
+                    Recognition has ended.
+                    NOW and only now send the question.
+                */
+
+                setTimeout(
+                    function() {
+
+                        sendMessage(
+                            question
+                        );
+
+                    },
+                    80
+                );
+            }
         };
 
 
@@ -2115,36 +2318,46 @@ function initializeRecognition() {
             );
 
 
-            isListening =
+            micActive =
                 false;
 
 
-            recognitionMode =
-                "idle";
+            micRequested =
+                false;
 
 
-            orb.classList.remove(
-                "listening"
+            waitingForVoiceResult =
+                false;
+
+
+            pendingVoiceText =
+                "";
+
+
+            setMicUI(
+                false
             );
 
 
-            micButton.textContent =
-                "🎤";
+            /*
+                NO automatic restart.
+            */
         };
 }
 
 
 // ============================================================
-// MANUAL MICROPHONE
+// MICROPHONE TOGGLE
 //
-// THIS IS THE ONLY PLACE WHERE MIC STARTS.
+// ONLY A USER CLICK CAN CALL THIS.
 // ============================================================
 
-function startManualListening() {
+function toggleMicrophone() {
 
     /*
-        If JARVIS is speaking and user explicitly
-        clicks the mic, stop JARVIS first.
+        If JARVIS is speaking:
+        user click = stop speech first,
+        then start mic.
     */
 
     if (
@@ -2152,6 +2365,54 @@ function startManualListening() {
     ) {
 
         stopTTS();
+
+
+        setTimeout(
+            startMicrophone,
+            100
+        );
+
+
+        return;
+    }
+
+
+    /*
+        If mic is already ON:
+        this click turns it OFF.
+    */
+
+    if (
+        micActive
+        ||
+        micRequested
+    ) {
+
+        stopMicrophone();
+
+        return;
+    }
+
+
+    startMicrophone();
+}
+
+
+// ============================================================
+// START MICROPHONE
+// ============================================================
+
+function startMicrophone() {
+
+    /*
+        Never start while JARVIS is talking.
+    */
+
+    if (
+        ttsSpeaking
+    ) {
+
+        return;
     }
 
 
@@ -2164,6 +2425,8 @@ function startManualListening() {
 
 
     if (
+        !recognitionSupported
+        ||
         !recognition
     ) {
 
@@ -2177,29 +2440,21 @@ function startManualListening() {
     }
 
 
-    /*
-        If mic is already listening,
-        clicking again stops it.
-    */
-
-    if (
-        isListening
-    ) {
-
-        try {
-
-            recognition.stop();
-
-        } catch (e) {
-        }
+    pendingVoiceText =
+        "";
 
 
-        return;
-    }
+    waitingForVoiceResult =
+        false;
 
 
-    recognitionMode =
-        "manual";
+    micRequested =
+        true;
+
+
+    setMicUI(
+        true
+    );
 
 
     try {
@@ -2208,20 +2463,37 @@ function startManualListening() {
             "en-IN";
 
 
+        recognition.continuous =
+            false;
+
+
+        recognition.interimResults =
+            true;
+
+
         recognition.start();
 
-    } catch (e) {
+    } catch (error) {
 
         console.log(
-            "Mic start error:",
-            e
+            "MIC START ERROR:",
+            error
+        );
+
+
+        micRequested =
+            false;
+
+
+        setMicUI(
+            false
         );
     }
 }
 
 
 // ============================================================
-// MUSIC DETECTION
+// MUSIC
 // ============================================================
 
 function isMusicCommand(
@@ -2242,7 +2514,7 @@ function isMusicCommand(
         "chalao",
         "chala do",
         "sunao",
-        "suna do",
+        "suna do"
     ];
 
 
@@ -2253,7 +2525,7 @@ function isMusicCommand(
         "gaana",
         "gana",
         "gaane",
-        "track",
+        "track"
     ];
 
 
@@ -2324,13 +2596,12 @@ function extractMusicQuery(
 
         /\b(sunao|suna do)\b/gi,
 
-        /\b(par|pe)\b/gi,
+        /\b(par|pe)\b/gi
     ];
 
 
     for (
-        const pattern
-        of patterns
+        const pattern of patterns
     ) {
 
         query =
@@ -2360,6 +2631,8 @@ async function playMusic(
     originalText
 ) {
 
+    stopMicrophone();
+
     stopTTS();
 
 
@@ -2372,17 +2645,7 @@ async function playMusic(
     addThinking();
 
 
-    let musicWindow = null;
-
-
     try {
-
-        musicWindow =
-            window.open(
-                "about:blank",
-                "_blank"
-            );
-
 
         const response =
             await fetch(
@@ -2395,16 +2658,14 @@ async function playMusic(
                     headers:
                         {
                             "Content-Type":
-                                "application/json",
+                                "application/json"
                         },
 
                     body:
-                        JSON.stringify(
-                            {
-                                query:
-                                    query,
-                            }
-                        ),
+                        JSON.stringify({
+                            query:
+                                query
+                        })
                 }
             );
 
@@ -2448,27 +2709,7 @@ async function playMusic(
                 "?autoplay=1&playsinline=1&rel=0";
 
 
-            if (
-                musicWindow
-                &&
-                !musicWindow.closed
-            ) {
-
-                musicWindow.location.href =
-                    data.url;
-
-            } else {
-
-                window.open(
-                    data.url,
-                    "_blank"
-                );
-            }
-
-
-            addMessage(
-                "jarvis",
-
+            const message =
                 selectedLanguage ===
                 "hinglish"
 
@@ -2478,28 +2719,26 @@ async function playMusic(
 
                     :
 
-                `Okay, playing ${data.title} on YouTube.`
+                `Okay, playing ${data.title} on YouTube.`;
+
+
+            addMessage(
+                "jarvis",
+                message
+            );
+
+
+            speakText(
+                message
             );
 
 
         } else {
 
-            if (
-                musicWindow
-                &&
-                !musicWindow.closed
-            ) {
-
-                musicWindow.location.href =
-                    data.url;
-
-            } else {
-
-                window.open(
-                    data.url,
-                    "_blank"
-                );
-            }
+            window.open(
+                data.url,
+                "_blank"
+            );
 
 
             const message =
@@ -2555,12 +2794,28 @@ async function playMusic(
 
 // ============================================================
 // SEND MESSAGE
+//
+// Voice message reaches here ONLY AFTER mic onend.
 // ============================================================
 
-async function sendMessage() {
+async function sendMessage(
+    messageOverride = null
+) {
+
+    /*
+        Absolutely turn microphone OFF before
+        processing and speaking.
+    */
+
+    stopMicrophone();
+
 
     const prompt =
-        userInput.value.trim();
+        messageOverride !== null
+            ? String(
+                messageOverride
+            ).trim()
+            : userInput.value.trim();
 
 
     if (
@@ -2568,43 +2823,6 @@ async function sendMessage() {
     ) {
 
         return;
-    }
-
-
-    /*
-        Make absolutely sure microphone is not running
-        when sending a message.
-    */
-
-    if (
-        recognition
-        &&
-        isListening
-    ) {
-
-        try {
-
-            recognition.stop();
-
-        } catch (e) {
-        }
-
-
-        isListening =
-            false;
-
-
-        recognitionMode =
-            "idle";
-
-
-        orb.classList.remove(
-            "listening"
-        );
-
-
-        micButton.textContent =
-            "🎤";
     }
 
 
@@ -2632,7 +2850,6 @@ async function sendMessage() {
             prompt
         );
 
-
         return;
     }
 
@@ -2656,6 +2873,10 @@ async function sendMessage() {
             answer
         );
 
+
+        /*
+            Mic is already OFF here.
+        */
 
         speakText(
             answer
@@ -2686,6 +2907,10 @@ async function sendMessage() {
         );
 
 
+        /*
+            Mic is already OFF here.
+        */
+
         speakText(
             answer
         );
@@ -2696,8 +2921,25 @@ async function sendMessage() {
 
 
     /*
-        AI
+        Cancel previous AI request if necessary.
     */
+
+    if (
+        aiController
+    ) {
+
+        try {
+
+            aiController.abort();
+
+        } catch (e) {
+        }
+    }
+
+
+    aiController =
+        new AbortController();
+
 
     addThinking();
 
@@ -2715,19 +2957,21 @@ async function sendMessage() {
                     headers:
                         {
                             "Content-Type":
-                                "application/json",
+                                "application/json"
                         },
 
                     body:
-                        JSON.stringify(
-                            {
-                                prompt:
-                                    prompt,
+                        JSON.stringify({
 
-                                language:
-                                    selectedLanguage,
-                            }
-                        ),
+                            prompt:
+                                prompt,
+
+                            language:
+                                selectedLanguage
+                        }),
+
+                    signal:
+                        aiController.signal
                 }
             );
 
@@ -2760,8 +3004,8 @@ async function sendMessage() {
 
 
         /*
-            JARVIS SPEAKS.
-            MIC STAYS OFF.
+            CRITICAL:
+            Mic is OFF before this function is called.
         */
 
         speakText(
@@ -2770,6 +3014,17 @@ async function sendMessage() {
 
 
     } catch (error) {
+
+        if (
+            error.name ===
+            "AbortError"
+        ) {
+
+            removeThinking();
+
+            return;
+        }
+
 
         console.error(
             "AI ERROR:",
@@ -2807,6 +3062,23 @@ async function sendMessage() {
 
 
 // ============================================================
+// TYPED MESSAGE
+// ============================================================
+
+function sendTypedMessage() {
+
+    /*
+        Typed message also makes sure mic is off.
+    */
+
+    stopMicrophone();
+
+
+    sendMessage();
+}
+
+
+// ============================================================
 // ENTER KEY
 // ============================================================
 
@@ -2820,13 +3092,21 @@ function handleKey(
 
         event.preventDefault();
 
-
-        sendMessage();
+        sendTypedMessage();
     }
 }
 
 
+// ============================================================
+// INITIAL STATE
+// ============================================================
+
+setMicUI(
+    false
+);
+
 </script>
+
 
 </body>
 
