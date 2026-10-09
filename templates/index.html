@@ -17,9 +17,8 @@
         
         .input-area { display: flex; width: 100%; max-width: 800px; background-color: #1f2937; border-radius: 25px; padding: 5px 10px; align-items: center; }
         
-        /* Mic button styles */
         .mic-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 10px; transition: opacity 0.3s; }
-        .mic-btn.disabled { opacity: 0.2; pointer-events: none; } /* pointer-events: none se click puri tarah block ho jata hai */
+        .mic-btn.disabled { opacity: 0.2; pointer-events: none !important; }
         
         input[type="text"] { flex: 1; background: none; border: none; color: white; padding: 10px; outline: none; font-size: 16px; }
         .send-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 10px; }
@@ -48,32 +47,43 @@
         const micBtn = document.getElementById("mic-btn");
 
         let isSpeaking = false; 
+        let isListening = false;
         let recognition = null;
 
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = false; // Never auto-restart
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
             recognition.interimResults = false;
             recognition.lang = 'en-IN';
 
             recognition.onstart = function() {
+                // LOCK 1: Agar bot bol raha hai, toh mic turant kill karo
                 if (isSpeaking) {
-                    recognition.abort(); // Agar galti se on hua toh turant kill
+                    recognition.abort();
+                    stopMicUI();
                     return;
                 }
+                isListening = true;
                 orb.classList.add("listening");
                 userInput.placeholder = "Listening...";
             };
 
             recognition.onresult = function(event) {
-                // Sunte hi turant stop karo
-                recognition.abort();
-                orb.classList.remove("listening");
-                userInput.placeholder = "Type your message...";
-                
+                // LOCK 2: Agar AI bol raha hai ya speech active hai, kisi bhi input ko ignore karo
+                if (isSpeaking) {
+                    userInput.value = "";
+                    stopMicUI();
+                    return;
+                }
+
                 const transcript = event.results[0][0].transcript;
-                userInput.value = transcript;
-                sendMessage(); 
+                stopMicUI();
+
+                if (transcript && transcript.trim() !== "") {
+                    userInput.value = transcript;
+                    sendMessage(); 
+                }
             };
 
             recognition.onerror = function() { stopMicUI(); };
@@ -81,18 +91,28 @@
         }
 
         function stopMicUI() {
+            isListening = false;
             orb.classList.remove("listening");
             userInput.placeholder = "Type your message...";
+            if (recognition) {
+                try { recognition.abort(); } catch(e){}
+            }
         }
 
         function toggleMic() {
-            if (isSpeaking) return; // Bolte waqt koi action nahi
-            
-            if (recognition) {
-                try { recognition.start(); } 
-                catch(e) { 
-                    recognition.abort(); 
-                    setTimeout(() => recognition.start(), 200);
+            // Agar bot bol raha hai, button click hone hi mat do
+            if (isSpeaking) return; 
+
+            if (isListening) {
+                stopMicUI();
+            } else {
+                if (recognition) {
+                    try {
+                        recognition.start();
+                    } catch(e) {
+                        stopMicUI();
+                        setTimeout(() => { if(!isSpeaking) recognition.start(); }, 100);
+                    }
                 }
             }
         }
@@ -114,8 +134,7 @@
             const text = userInput.value.trim();
             if (!text) return;
 
-            // Message bhejne se pehle mic strongly band
-            if (recognition) recognition.abort(); 
+            // Message bhejte hi mic ko completely band karo
             stopMicUI();
 
             addMessage(text, "user");
@@ -141,26 +160,24 @@
 
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); 
-                
-                // --- MOST IMPORTANT PART TO STOP THE LOOP ---
-                if (recognition) { recognition.abort(); } 
-                stopMicUI();
-                
+                // 1. Sabse pehle Speech Flag ko TRUE karo aur Mic UI/Events ko Kill karo
                 isSpeaking = true;
-                micBtn.classList.add("disabled"); // UI se click block
-                
+                micBtn.classList.add("disabled");
+                stopMicUI();
+
+                window.speechSynthesis.cancel(); // Purani aawaz ko stop karo
+
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-IN';
-                
+
                 utterance.onstart = function() {
-                    // Jab actual awaz nikle tab dobara mic kill karo
-                    if (recognition) { recognition.abort(); }
+                    isSpeaking = true;
+                    stopMicUI(); // Bot ki speech start hote hi mic dobara kill karo
                 };
 
                 utterance.onend = function() {
                     isSpeaking = false;
-                    micBtn.classList.remove("disabled"); // Bot chup, click allowed
+                    micBtn.classList.remove("disabled"); // Speech khatam hone par hi mic button enable hoga
                 };
 
                 utterance.onerror = function() {
