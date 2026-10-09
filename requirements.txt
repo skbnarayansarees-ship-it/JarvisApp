@@ -1,5 +1,5 @@
 Flask
 Flask-CORS
-google-generativeai
+requests
 duckduckgo-search
 gunicorn
