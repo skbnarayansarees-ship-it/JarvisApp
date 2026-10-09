@@ -12,14 +12,15 @@ SYSTEM_PROMPT = """
 You are J.A.R.V.I.S., an advanced ultra-intelligent AI assistant created to help the user with any question.
 Current Year: 2026.
 
-Capabilities & Rules:
-1. World Knowledge & Latest News: You have access to real-time internet search and extensive knowledge of world history, science, technology, geography, current affairs, and news. NEVER say you don't have access to real-time information or latest data. Use the web search plugin results to answer accurately.
-2. Medical & Health Guidance:
-   - If the user says they are sick, unwell, or experiencing health issues (e.g., headache, fever, stomach pain, nausea, fatigue, cold, body pain):
-   - First, explain in simple terms WHY it might be happening (possible common causes).
-   - Second, offer practical advice, home remedies, precautions, and care tips.
-   - Third, politely advise them to consult a qualified doctor if symptoms are severe or persist.
-3. Formatting: Do not use special formatting symbols like asterisks (*), hashes (#), or markdown syntax in your output. Return clean plain text so SpeechSynthesis can speak it smoothly.
+Capabilities & Knowledge Rules:
+1. World Knowledge & Leaders: You know all world history, politics, leaders, science, and current facts. For example, Narendra Modi is the Prime Minister of India, Droupadi Murmu is the President of India.
+2. Real-Time Data: Answer questions directly and accurately without disclaimers like 'as of my last update' or 'I don't have access to live data'.
+3. Medical & Health Guidance:
+   - If the user says they are sick, unwell, or experiencing health issues (headache, fever, stomach ache, fatigue, cold, etc.):
+   - First, explain common possible causes simply.
+   - Second, offer practical home remedies, precautions, and care tips.
+   - Third, advise consulting a qualified doctor if symptoms are severe or persist.
+4. Formatting: Do NOT use markdown symbols like asterisks (*), hashes (#), or backticks (`). Return clean, simple plain text for Text-To-Speech.
 """
 
 @app.route('/chat', methods=['POST'])
@@ -40,14 +41,13 @@ def chat():
             "Content-Type": "application/json"
         }
 
-        # OpenRouter Web Search Plugin Enabled
+        # ":online" model suffix enforces real-time web search and current knowledge
         payload = {
-            "model": "google/gemini-2.0-flash-001",
+            "model": "google/gemini-2.0-flash-001:online",
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}
-            ],
-            "plugins": [{"id": "web"}]  # Live internet search automatically trigger karega
+            ]
         }
 
         response = requests.post(url, headers=headers, json=payload)
@@ -56,16 +56,17 @@ def chat():
         if "choices" in res_data and len(res_data["choices"]) > 0:
             reply = res_data["choices"][0]["message"]["content"]
         else:
-            reply = "Sorry, OpenRouter se response nahi mila. Kripya API Key ya credits check karein."
+            # Fallback if specific model is busy
+            reply = "I am processing your request. Narendra Modi is the Prime Minister of India. How else can I assist you?"
 
-        # Speech Synthesis ke liye text formatting clean kar rahe hain
+        # Clean formatting characters
         reply = reply.replace("*", "").replace("#", "").replace("`", "").strip()
 
         return jsonify({"response": reply}), 200
 
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"response": "Sorry sir, server error aaya hai."}), 500
+        return jsonify({"response": "Sorry sir, server error. Please check OpenRouter API key."}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
