@@ -58,7 +58,6 @@
             recognition.lang = 'en-IN';
 
             recognition.onstart = function() {
-                // LOCK 1: Agar bot bol raha hai, toh mic turant kill karo
                 if (isSpeaking) {
                     recognition.abort();
                     stopMicUI();
@@ -70,7 +69,6 @@
             };
 
             recognition.onresult = function(event) {
-                // LOCK 2: Agar AI bol raha hai ya speech active hai, kisi bhi input ko ignore karo
                 if (isSpeaking) {
                     userInput.value = "";
                     stopMicUI();
@@ -100,7 +98,6 @@
         }
 
         function toggleMic() {
-            // Agar bot bol raha hai, button click hone hi mat do
             if (isSpeaking) return; 
 
             if (isListening) {
@@ -134,14 +131,14 @@
             const text = userInput.value.trim();
             if (!text) return;
 
-            // Message bhejte hi mic ko completely band karo
             stopMicUI();
 
             addMessage(text, "user");
             userInput.value = "";
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/chat", {
+                // RENDER URL ADDED HERE (Connection problem fix)
+                const response = await fetch("https://jarvis-ai-n0fu.onrender.com/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: text })
@@ -160,24 +157,23 @@
 
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                // 1. Sabse pehle Speech Flag ko TRUE karo aur Mic UI/Events ko Kill karo
                 isSpeaking = true;
                 micBtn.classList.add("disabled");
                 stopMicUI();
 
-                window.speechSynthesis.cancel(); // Purani aawaz ko stop karo
+                window.speechSynthesis.cancel();
 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-IN';
 
                 utterance.onstart = function() {
                     isSpeaking = true;
-                    stopMicUI(); // Bot ki speech start hote hi mic dobara kill karo
+                    stopMicUI();
                 };
 
                 utterance.onend = function() {
                     isSpeaking = false;
-                    micBtn.classList.remove("disabled"); // Speech khatam hone par hi mic button enable hoga
+                    micBtn.classList.remove("disabled");
                 };
 
                 utterance.onerror = function() {
