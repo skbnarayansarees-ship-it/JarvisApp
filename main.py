@@ -1,5 +1,8 @@
 import os
 import requests
+import asyncio
+import base64
+import edge_tts
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -13,21 +16,37 @@ You are J.A.R.V.I.S., an advanced ultra-intelligent AI assistant created to help
 Current Year: 2026.
 
 Capabilities & Knowledge Rules:
-1. World Knowledge & Leaders: You know all world history, politics, leaders, science, and current facts. For example, Narendra Modi is the Prime Minister of India, Droupadi Murmu is the President of India.
-2. Real-Time Data: Answer questions directly and accurately without disclaimers like 'as of my last update' or 'I don't have access to live data'.
+1. World Knowledge & Leaders: You know all world history, politics, leaders, science, and current facts.
+2. Real-Time Data: Answer questions directly and accurately without disclaimers.
 3. Medical & Health Guidance:
-   - If the user says they are sick, unwell, or experiencing health issues (headache, fever, stomach ache, fatigue, cold, etc.):
+   - If the user says they are sick or unwell (headache, fever, stomach ache, fatigue, cold):
    - First, explain common possible causes simply.
-   - Second, offer practical home remedies, precautions, and care tips.
-   - Third, advise consulting a qualified doctor if symptoms are severe or persist.
-4. Formatting: Do NOT use markdown symbols like asterisks (*), hashes (#), or backticks (`). Return clean, simple plain text for Text-To-Speech.
+   - Second, offer practical home remedies and precaution tips.
+   - Third, advise consulting a qualified doctor if symptoms persist.
+4. Formatting: Do NOT use markdown symbols like asterisks (*), hashes (#), or backticks (`). Return clean, simple plain text for voice synthesis.
 """
+
+async def generate_audio_base64(text, voice_mode):
+    # Studio quality realistic neural voices
+    # English: en-US-ChristopherNeural (JARVIS style deep voice)
+    # Hinglish: hi-IN-MadhurNeural (Natural human Indian voice)
+    voice = "en-US-ChristopherNeural" if voice_mode == "english" else "hi-IN-MadhurNeural"
+    
+    communicate = edge_tts.Communicate(text, voice)
+    audio_bytes = bytearray()
+    
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_bytes.extend(chunk["data"])
+            
+    return base64.b64encode(audio_bytes).decode('utf-8')
 
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
         data = request.get_json()
         user_message = data.get("message", "")
+        voice_mode = data.get("voice_mode", "hinglish")
 
         if not user_message:
             return jsonify({"response": "Please say something."}), 400
@@ -41,7 +60,6 @@ def chat():
             "Content-Type": "application/json"
         }
 
-        # ":online" model suffix enforces real-time web search and current knowledge
         payload = {
             "model": "google/gemini-2.0-flash-001:online",
             "messages": [
@@ -56,17 +74,22 @@ def chat():
         if "choices" in res_data and len(res_data["choices"]) > 0:
             reply = res_data["choices"][0]["message"]["content"]
         else:
-            # Fallback if specific model is busy
-            reply = "I am processing your request. Narendra Modi is the Prime Minister of India. How else can I assist you?"
+            reply = "I am JARVIS. How can I assist you today?"
 
-        # Clean formatting characters
         reply = reply.replace("*", "").replace("#", "").replace("`", "").strip()
 
-        return jsonify({"response": reply}), 200
+        # Backend par realistic MP3 audio generate ho raha hai
+        audio_base64 = ""
+        try:
+            audio_base64 = asyncio.run(generate_audio_base64(reply, voice_mode))
+        except Exception as tts_err:
+            print("TTS Error:", tts_err)
+
+        return jsonify({"response": reply, "audio": audio_base64}), 200
 
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"response": "Sorry sir, server error. Please check OpenRouter API key."}), 500
+        return jsonify({"response": "Sorry sir, server error aaya hai."}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
