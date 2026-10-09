@@ -42,8 +42,8 @@
     <div class="header">
         <h2>J.A.R.V.I.S.</h2>
         <select id="voice-mode" class="voice-select">
-            <option value="hinglish" selected>🗣️ Hinglish Voice (Accurate Words)</option>
-            <option value="english">🇬🇧 English Voice (Fluent Accent)</option>
+            <option value="hinglish" selected>🗣️ Realistic Hinglish Voice</option>
+            <option value="english">🇬🇧 Realistic English Voice</option>
         </select>
     </div>
 
@@ -69,18 +69,7 @@
         let isSpeaking = false; 
         let isListening = false;
         let recognition = null;
-        let availableVoices = [];
-
-        // Load voices list for browser TTS
-        function loadVoices() {
-            if ('speechSynthesis' in window) {
-                availableVoices = window.speechSynthesis.getVoices();
-            }
-        }
-        loadVoices();
-        if ('speechSynthesis' in window && window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-        }
+        let currentAudio = null;
 
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -172,64 +161,58 @@
                 const response = await fetch("https://jarvis-ai-n0fu.onrender.com/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({ 
+                        message: text,
+                        voice_mode: voiceModeSelect.value 
+                    })
                 });
 
                 const data = await response.json();
                 addMessage(data.response, "bot");
-                speakText(data.response);
+
+                if (data.audio) {
+                    playRealisticAudio(data.audio);
+                }
 
             } catch (error) {
                 const errorMsg = "Sorry, connection problem.";
                 addMessage(errorMsg, "bot");
-                speakText(errorMsg);
             }
         }
 
-        function speakText(text) {
-            if ('speechSynthesis' in window) {
-                isSpeaking = true;
-                micBtn.classList.add("disabled");
-                stopMicUI();
-
-                window.speechSynthesis.cancel();
-
-                const utterance = new SpeechSynthesisUtterance(text);
-                const mode = voiceModeSelect.value;
-
-                if (availableVoices.length === 0) {
-                    availableVoices = window.speechSynthesis.getVoices();
-                }
-
-                // Voice selection logic
-                if (mode === "english") {
-                    utterance.lang = "en-US";
-                    const engVoice = availableVoices.find(v => v.lang.includes("en-US") || v.lang.includes("en-GB"));
-                    if (engVoice) utterance.voice = engVoice;
-                } else {
-                    utterance.lang = "hi-IN";
-                    const hinVoice = availableVoices.find(v => v.lang.includes("hi-IN")) || 
-                                     availableVoices.find(v => v.lang.includes("en-IN"));
-                    if (hinVoice) utterance.voice = hinVoice;
-                }
-
-                utterance.onstart = function() {
-                    isSpeaking = true;
-                    stopMicUI();
-                };
-
-                utterance.onend = function() {
-                    isSpeaking = false;
-                    micBtn.classList.remove("disabled");
-                };
-
-                utterance.onerror = function() {
-                    isSpeaking = false;
-                    micBtn.classList.remove("disabled");
-                };
-
-                window.speechSynthesis.speak(utterance);
+        function playRealisticAudio(base64Data) {
+            // Stop any playing audio
+            if (currentAudio) {
+                currentAudio.pause();
             }
+
+            // Lock Mic while speaking
+            isSpeaking = true;
+            micBtn.classList.add("disabled");
+            stopMicUI();
+
+            currentAudio = new Audio("data:audio/mp3;base64," + base64Data);
+
+            currentAudio.onplay = function() {
+                isSpeaking = true;
+                stopMicUI();
+            };
+
+            currentAudio.onended = function() {
+                isSpeaking = false;
+                micBtn.classList.remove("disabled");
+            };
+
+            currentAudio.onerror = function() {
+                isSpeaking = false;
+                micBtn.classList.remove("disabled");
+            };
+
+            currentAudio.play().catch(e => {
+                console.log("Audio playback error:", e);
+                isSpeaking = false;
+                micBtn.classList.remove("disabled");
+            });
         }
     </script>
 </body>
